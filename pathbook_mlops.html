@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pathbook: the MLOps engagement · WhoIsJaneTurner</title>
+<meta name="description" content="An operator-gated Pathbook for the MLOps reference architecture. Pick the modules that fit the client, make the decisions, approve the queue, and compose a bespoke build brief.">
+<link rel="canonical" href="https://whoisjaneturner.ai/pathbook_mlops.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="WhoIsJaneTurner">
+<meta property="og:title" content="Pathbook: the MLOps engagement · WhoIsJaneTurner">
+<meta property="og:description" content="A choose-your-path book that turns the MLOps reference architecture into optional modules and composes a bespoke build brief from the operator's choices.">
+<meta property="og:url" content="https://whoisjaneturner.ai/pathbook_mlops.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:light dark;
+  --bg:#fbfaf7;--paper:#ffffff;--ink:#1f1e1c;--muted:#5f5e5a;--faint:#8a8984;--line:#e4e2da;
+  --accent:#3C3489;--accent-2:#534AB7;--accent-bg:#EEEDFE;--teal:#0F6E56;--teal-bg:#E1F5EE;--coral:#993C1D;--coral-bg:#FAECE7;--gray-bg:#F1EFE8;
+  --serif:"Iowan Old Style","Charter","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#15141a;--paper:#1d1c24;--ink:#ece9e2;--muted:#b4b1a9;--faint:#85827b;--line:#2f2d38;
+    --accent:#AFA9EC;--accent-2:#C7C2F4;--accent-bg:#2a2650;--teal:#7fd3b8;--teal-bg:#173a30;--coral:#f0a585;--coral-bg:#3d241a;--gray-bg:#26252e}
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.65 var(--serif)}
+a{color:var(--accent-2)}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+@media(max-width:600px){.wrap{padding:0 16px}}
+.skip{position:absolute;left:-999px}.skip:focus{left:16px;top:12px;background:var(--paper);padding:6px 10px;z-index:10}
+.mast{border-bottom:1px solid var(--line)}
+.mast .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;height:64px}
+.brand{font:600 15px/1 var(--sans);letter-spacing:.02em;text-decoration:none;color:var(--ink);display:flex;align-items:center;gap:10px}
+.brand .mark{width:26px;height:26px;border-radius:6px;background:var(--accent);color:var(--bg);display:grid;place-items:center;font:700 13px/1 var(--serif)}
+.brand small{font-weight:400;color:var(--muted)}
+.mast a.back{font:14px var(--sans);color:var(--muted);text-decoration:none}
+.mast a.back:hover{color:var(--ink)}
+.head{padding:48px 0 18px;max-width:820px}
+.kicker{font:600 12px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+h1{font-weight:500;font-size:clamp(32px,5vw,46px);line-height:1.1;letter-spacing:-.015em;margin:14px 0 16px}
+.lede{font-size:20px;line-height:1.55;color:var(--muted);margin:0 0 16px}
+.meta{font:13px/1.5 var(--sans);color:var(--faint);display:flex;flex-wrap:wrap;gap:4px 14px}
+.meta b{font-weight:500;color:var(--muted)}
+h2{font-weight:500;font-size:26px;line-height:1.2;margin:0 0 6px;letter-spacing:-.01em;border-bottom:1px solid var(--ink);padding-bottom:10px}
+h3{font:600 16px/1.3 var(--sans);margin:22px 0 8px}
+p{margin:14px 0}
+code{font:14px var(--mono);background:var(--gray-bg);padding:1px 6px;border-radius:4px}
+.intro{max-width:820px;padding-bottom:8px}
+.intro p{color:var(--ink)}
+.note{font:14px/1.55 var(--sans);color:var(--muted);background:var(--gray-bg);border-left:3px solid var(--accent-2);padding:12px 16px;border-radius:0 8px 8px 0;margin:18px 0}
+.note b{color:var(--ink)}
+.note.warn{border-left-color:var(--coral)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.tag{display:inline-block;font:600 11.5px/1 var(--sans);padding:4px 8px;border-radius:99px;background:var(--accent-bg);color:var(--accent)}
+.tag.t1{background:var(--teal-bg);color:var(--teal)}
+.tag.t2{background:var(--coral-bg);color:var(--coral)}
+.tag.t3{background:var(--gray-bg);color:var(--muted)}
+
+/* ---------- runner layout ---------- */
+.runner{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:28px;margin:30px 0 20px;align-items:start}
+@media(max-width:860px){.runner{grid-template-columns:1fr}}
+.stage{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:26px 28px 28px;min-height:360px}
+@media(max-width:600px){.stage{padding:20px 18px 22px}}
+.side{position:sticky;top:16px;display:flex;flex-direction:column;gap:14px}
+@media(max-width:860px){.side{position:static}}
+
+/* progress rail */
+.rail{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
+.rail button{font:500 12px/1 var(--sans);padding:7px 10px;border-radius:99px;border:1px solid var(--line);background:var(--paper);color:var(--muted);cursor:pointer}
+.rail button[aria-current=step]{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.rail button.done{color:var(--accent);border-color:var(--accent-bg);background:var(--accent-bg)}
+.rail button:disabled{opacity:.45;cursor:default}
+
+.pagehdr{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:4px}
+.pagehdr .ntype{font:600 11px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.pagehdr .pnum{font:12px/1 var(--sans);color:var(--faint);font-variant-numeric:tabular-nums}
+.stage h2.q{border:0;padding:0;font-size:23px;font-weight:500;margin:6px 0 10px;line-height:1.25}
+.stage .sub{font:14.5px/1.55 var(--sans);color:var(--muted);margin:0 0 16px}
+.cite{font:12px/1.4 var(--sans);color:var(--faint)}
+.cite a{color:var(--faint)}
+
+textarea,input[type=text]{width:100%;font:15px/1.55 var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;resize:vertical}
+textarea:focus,input:focus,button:focus-visible,a:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+label.fld{display:block;font:13px/1.4 var(--sans);color:var(--muted);margin:12px 0 4px}
+
+/* option buttons */
+.opts{display:flex;flex-direction:column;gap:8px;margin:8px 0}
+.opt{text-align:left;font:inherit;border:1px solid var(--line);background:var(--paper);border-radius:11px;padding:13px 15px;cursor:pointer;color:var(--ink);display:flex;gap:12px;align-items:flex-start}
+.opt:hover{border-color:var(--faint)}
+.opt[aria-pressed=true]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-bg)}
+.opt .lbl{font:600 15px/1.35 var(--sans)}
+.opt .eff{font:13px/1.45 var(--sans);color:var(--muted);margin-top:3px}
+.opt .pick{flex:0 0 auto;width:18px;height:18px;border-radius:50%;border:2px solid var(--faint);margin-top:2px}
+.opt[aria-pressed=true] .pick{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 3px var(--paper)}
+
+/* needs questions */
+.qblock{border-bottom:1px solid var(--line);padding:14px 0}
+.qblock:first-of-type{padding-top:4px}
+.qblock:last-of-type{border-bottom:0}
+.qblock .qtext{font:500 15.5px/1.45 var(--sans);margin-bottom:8px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{font:500 13px/1 var(--sans);padding:9px 14px;border-radius:99px;border:1px solid var(--line);background:var(--paper);color:var(--muted);cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.suggests{font:12px/1.4 var(--sans);color:var(--teal);margin-top:7px}
+.suggests.none{color:var(--faint)}
+
+/* module picker */
+.mods{display:flex;flex-direction:column;gap:9px;margin:6px 0}
+.mod{border:1px solid var(--line);border-radius:12px;padding:13px 15px;background:var(--paper);display:flex;gap:12px;align-items:flex-start;cursor:pointer}
+.mod[aria-pressed=true]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-bg)}
+.mod.req{border-style:dashed}
+.mod .box{flex:0 0 auto;width:18px;height:18px;border-radius:5px;border:2px solid var(--faint);margin-top:2px;display:grid;place-items:center;color:var(--bg);font:700 12px/1 var(--sans)}
+.mod[aria-pressed=true] .box{border-color:var(--accent);background:var(--accent)}
+.mod .mname{font:600 15px/1.3 var(--sans)}
+.mod .msum{font:13px/1.45 var(--sans);color:var(--muted);margin-top:3px}
+.mod .why{font:12px/1.4 var(--sans);margin-top:6px}
+.mod .why.sg{color:var(--teal)}
+.mod .why.rq{color:var(--coral)}
+
+/* defaults */
+.defitem{border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin:9px 0;background:var(--paper)}
+.defitem .dhdr{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.defitem .dname{font:600 14.5px/1.3 var(--sans)}
+.defitem .dmod{font:11px/1 var(--sans);color:var(--faint);text-transform:uppercase;letter-spacing:.06em}
+.defitem .dtext{font:14px/1.55 var(--sans);color:var(--muted);margin:7px 0 0}
+.defitem .chg{font:12.5px var(--sans);color:var(--accent-2);background:none;border:0;cursor:pointer;padding:6px 0 0}
+.defitem textarea{margin-top:8px;font-size:14px}
+.grp{font:600 12px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:20px 0 2px}
+
+/* contract + brief */
+.summary{font:14px/1.6 var(--sans)}
+.summary dl{display:grid;grid-template-columns:150px 1fr;gap:4px 16px;margin:10px 0}
+@media(max-width:520px){.summary dl{grid-template-columns:1fr}}
+.summary dt{color:var(--muted);font-weight:600}
+.summary dd{margin:0;color:var(--ink)}
+.queue{list-style:none;padding:0;margin:12px 0}
+.queue li{border:1px solid var(--line);border-radius:10px;padding:11px 14px;margin:7px 0;background:var(--paper)}
+.queue .qn{font:600 14px/1.3 var(--sans)}
+.queue .qg{font:13px/1.5 var(--sans);color:var(--muted);margin-top:3px}
+.queue .qdep{font:12px/1.4 var(--sans);color:var(--faint);margin-top:4px}
+.hashline{font:12.5px/1.5 var(--mono);color:var(--muted);background:var(--gray-bg);border-radius:8px;padding:10px 12px;margin:12px 0;overflow-wrap:anywhere}
+
+/* buttons */
+.nav{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.btn{font:600 14px/1 var(--sans);padding:12px 18px;border-radius:9px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--faint)}
+.btn.p{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.btn.p:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.ghost{border-color:transparent;color:var(--muted)}
+.spacer{flex:1}
+
+/* sidebar cards */
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.card h4{font:600 11px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:0 0 10px}
+.scopelist{list-style:none;margin:0;padding:0;font:13.5px/1.5 var(--sans)}
+.scopelist li{display:flex;gap:8px;align-items:baseline;padding:4px 0;color:var(--ink)}
+.scopelist .d{color:var(--teal);font-size:12px}
+.scopelist .r{color:var(--coral);font-size:11px}
+.scopelist .empty{color:var(--faint);font-style:italic}
+.decs{font:13px/1.55 var(--sans);color:var(--muted);margin:0}
+.decs b{color:var(--ink);font-weight:600}
+details.ledger{border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:0 14px}
+details.ledger summary{cursor:pointer;font:600 11px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:13px 0}
+details.ledger[open] summary{border-bottom:1px solid var(--line);margin-bottom:6px}
+.led{font:11.5px/1.5 var(--mono);color:var(--muted);max-height:200px;overflow:auto;padding-bottom:10px}
+.led div{padding:2px 0;border-bottom:1px dotted var(--line)}
+.led b{color:var(--accent)}
+
+/* brief output */
+pre.brief{margin:0;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:18px 18px;font:13px/1.6 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);max-height:520px;overflow:auto}
+.toast{font:13px var(--sans);color:var(--teal);margin-left:6px}
+
+footer{border-top:1px solid var(--line);margin-top:28px;padding:28px 0 48px;font:13px/1.6 var(--sans);color:var(--faint)}
+footer a{color:var(--accent-2)}
+.nojs{max-width:820px}
+</style>
+</head>
+<body>
+<a class="skip" href="#runner">Skip to the book</a>
+
+<header class="mast"><div class="wrap">
+  <a class="brand" href="index.html"><span class="mark">J</span>WhoIsJaneTurner <small>Research</small></a>
+  <a class="back" href="index.html">&larr; All articles</a>
+</div></header>
+
+<main class="wrap">
+  <div class="head">
+    <div class="kicker">Template &middot; Pathbook</div>
+    <h1>Pathbook: the MLOps engagement</h1>
+    <p class="lede">A book of numbered pages for the MLOps reference architecture. Read a page, pick a path, and each pick adds a module to the queue. At the end the book composes a build brief shaped to one client.</p>
+    <div class="meta"><span><b>Working name</b></span><span>Book 0.2</span><span>Runs the MLOps reference architecture v1.2</span><span>24 Oct 2026</span></div>
+  </div>
+
+  <div class="intro">
+    <p>A <b>Pathbook</b> turns an architecture into a menu. The consultant defines the architecture once; the book makes every part of it an optional module. A client operator chooses the modules that fit, answers a few plain questions, records the decisions each module needs, and approves a work queue. Nothing is added to scope except by a choice on the page &mdash; the operator holds scope, the book never widens it on its own.</p>
+
+    <div class="note"><b>What this page runs, and what it does not.</b> This is the deterministic spine of the book, run in your browser: the pages, the picks, the dependency resolution, the gates, the contract hash and the compose step. It stops where the real Pathbook runner would hand each module to an agent to write the plan prose. So the brief you get here carries every module's <i>boundary</i> &mdash; its goal, its rules with the failure case (<code>breaks_if</code>) written out, its roles, its must-nots and its checks &mdash; which is the exact specification those agents would build against. No agent runs here, and nothing you enter leaves your browser.</p></div>
+
+    <div class="note warn"><b>Provenance.</b> The needs questions below are a hand-drafted stand-in for the generation step and are <i>not yet consultant-approved</i>; the <code>breaks_if</code> lines are drafts; module dependencies were approved by the architecture owner on 2026-10-21. Figures and defaults are drawn from the MLOps reference architecture v1.2. Treat the brief as a scoping instrument, not a finished plan.</div>
+  </div>
+
+  <section id="runner" class="runner" aria-label="Pathbook runner">
+    <div class="stage" id="stage" aria-live="polite"></div>
+    <aside class="side">
+      <div class="card">
+        <h4>Scope &mdash; your queue</h4>
+        <ul class="scopelist" id="scopeList"><li class="empty">No modules chosen yet.</li></ul>
+      </div>
+      <div class="card">
+        <h4>Decisions</h4>
+        <p class="decs" id="decsList"><span style="color:var(--faint);font-style:italic">None recorded yet.</span></p>
+      </div>
+      <details class="ledger"><summary>Ledger</summary><div class="led" id="led"></div></details>
+    </aside>
+  </section>
+
+  <noscript>
+    <div class="nojs note warn">This page is an interactive book and needs JavaScript. With it off, read the source it runs: the <a href="mlops_architecture.html">MLOps reference architecture</a>.</div>
+  </noscript>
+</main>
+
+<footer>
+  <div style="margin-bottom:8px">Researched, analysed and drafted with Claude (Anthropic) under the direction of the site owner, who reviewed it for accuracy and consistency. The book runs the deterministic part of the Pathbook spec; module plans are written by agents in the full runner, not here. Errors are still possible.</div>
+  <div>Runs: <a href="mlops_architecture.html">MLOps reference architecture with an LLM interface</a> (v1.2). Related: <a href="responsible_agent_framework.html">Responsible agent deployment and evaluation</a>, <a href="verification_contract.html">The verification contract</a>, <a href="agent_orchestrator_reference.html">A well-built agent orchestrator</a>.</div>
+</footer>
+
+<script>
+"use strict";
+/* ============================================================
+   THE BOOK — mlops.pathbook.yaml (v0.2), hardcoded as data.
+   A later runner can load this from the YAML instead; the page
+   is the first concrete Pathbook, with the book inlined.
+   ============================================================ */
+const BOOK = {
+  id: "mlops-reference-architecture",
+  version: "0.2",
+  source: { title: "MLOps reference architecture with an LLM interface", version: "1.2", href: "mlops_architecture.html",
+            sha256: "d10ca529737fc3cdc579ca352d0dbf8684f59e0ee5bdb1648b446f3a8a1a5cc7" },
+  needs: [
+    { id:"n_envs", text:"Will the platform run in more than one environment, such as dev, staging, and prod?", cite:"Environments", suggests:["env"] },
+    { id:"n_lineage", text:"Do you need one record of the data, features, and settings behind each model?", cite:"Stores and lineage", suggests:["stores"] },
+    { id:"n_approval", text:"Must a person approve each model before the business uses it?", cite:"Model lifecycle", suggests:["lifecycle"] },
+    { id:"n_schedule", text:"Do models build or score on a schedule, or when new data arrives?", cite:"Orchestration", suggests:["orch"] },
+    { id:"n_chat", text:"Should analysts ask an LLM about model results, or have it start jobs?", cite:"LLM interface", suggests:["llm"] },
+    { id:"n_agent_release", text:"Will an LLM agent answer analysts, so that you must test it before each release?", cite:"Agent evaluation", suggests:["evalx"] },
+    { id:"n_code", text:"Must every environment be rebuilt from reviewed code, with no hand changes?", cite:"Built as code", suggests:["iac"] },
+    { id:"n_standards", text:"Must you show how the design maps to a standard, such as NIST AI RMF or ISO/IEC 42001?", cite:"Standards", suggests:["std"] }
+  ],
+  // display order for the menu; topo sort still governs the build order
+  order: ["env","stores","orch","lifecycle","llm","evalx","iac","std"],
+  modules: {
+    env: { label:"Environments for a small team", source:"Environments",
+      summary:"The items that teams build once, deploy per environment, or share.",
+      requires:[], inputs:["environments","owners"],
+      goal:"The plan places each item as built once, per environment, or shared.",
+      roles:["platform_engineer","analyst","release_owner"],
+      still_wrong:["A shared store has no owner role, though the operator chose owner roles","The plan lists tools but does not say which items have versions"],
+      must_not:["A plan that adds an environment kind the source does not hold","A plan that gives one team write access to all environments"],
+      rules:[
+        {id:"c1",rule:"Each item has one of four labels: built once, per environment, shared, or product line.",breaks_if:"An item has no label, two labels, or a label outside the four."},
+        {id:"c2",rule:"Each shared item has one owner role if the operator chose owner roles.",breaks_if:"The operator chose owner roles, and a shared item has no owner role or two."},
+        {id:"c4",rule:"The plan covers the environments that the operator named.",breaks_if:"The plan adds an environment that the operator did not name, or omits one."},
+        {id:"c3",rule:"Each claim cites a section of the source page.",breaks_if:"A step has no section cite, or the cited section does not hold the step."},
+        {id:"s1",rule:"Each step has a check that a person can see.",breaks_if:"A step has no check, or its check needs a judgment call."}
+      ], open_for:["wording","order of items","choice of examples"] },
+    stores: { label:"Stores and lineage", source:"Stores and lineage",
+      summary:"Model store, metadata store, feature catalog, job store, tool registry, action log, eval store.",
+      requires:[], inputs:["def:outcomes","def:retention"],
+      goal:"Each store has one writer role and a stable key for lookup.",
+      roles:["orchestration_engine","analyst","llm_interface"],
+      still_wrong:["A store has two writers that disagree","A key path changes and old lineage breaks","Someone can edit the action log"],
+      must_not:["A store that more than one role can write without a rule","A key scheme that depends on file location"],
+      rules:[
+        {id:"c1",rule:"Every store lists its writer role and its reader roles.",breaks_if:"A store has no writer role, or a role reads a store that the list does not name."},
+        {id:"c2",rule:"The action log is append only.",breaks_if:"Any role can edit or delete an action log entry."},
+        {id:"c3",rule:"Every step cites a section of the source page.",breaks_if:"A step has no section cite, or the cited section does not hold the step."},
+        {id:"s1",rule:"Each step has a check that a person can see.",breaks_if:"A step has no check, or its check needs a judgment call."}
+      ], open_for:["wording","order of items","choice of examples"] },
+    orch: { label:"Orchestration", source:"Orchestration",
+      summary:"Workflow definitions, input checks first, output checks last.",
+      requires:["stores"], inputs:["engine","compute","def:input_checks","def:hand_off","def:cost"],
+      goal:"Every workflow runs input checks first and output checks last.",
+      roles:["workflow_engine","compute_service","job_store"],
+      still_wrong:["Checks run but a failure does not stop the workflow","Run state lives in two places","An alert fires with no run to link to"],
+      must_not:["A workflow with no input check","Run state kept outside the engine"],
+      rules:[
+        {id:"c1",rule:"Input checks run first. Output checks run last.",breaks_if:"A workflow has no input check before its first step, or its output check does not run last."},
+        {id:"c2",rule:"The plan names the chosen engine and compute service.",breaks_if:"The plan names no engine, no compute service, or a pair the operator did not choose."},
+        {id:"c3",rule:"Alerts come from engine events.",breaks_if:"An alert comes from a source other than an engine event."},
+        {id:"c4",rule:"Every step cites a section of the source page.",breaks_if:"A step has no section cite, or the cited section does not hold the step."},
+        {id:"s1",rule:"Each step has a check that a person can see.",breaks_if:"A step has no check, or its check needs a judgment call."}
+      ], open_for:["wording","order of items","choice of examples"] },
+    lifecycle: { label:"Model lifecycle", source:"Model lifecycle",
+      summary:"Candidate, Production, Previous. The registry refuses changes without passing evidence.",
+      requires:["stores","orch"], inputs:["serving","def:gates","def:retrain"],
+      goal:"No model changes stage without passing evidence and an analyst approval.",
+      roles:["model_registry","orchestration_engine","analyst"],
+      still_wrong:["Evidence exists but is not tied to the model version","A revert creates a new untested version","The agent approves its own promotion"],
+      must_not:["A promotion path with no human approval","A revert that builds a new artifact"],
+      rules:[
+        {id:"c1",rule:"The stages are Candidate, Production, and Previous.",breaks_if:"A fourth stage appears, or one of the three stages is missing."},
+        {id:"c2",rule:"Policy sits in each product line. Evidence comes from orchestration. An analyst approves.",breaks_if:"Policy sits outside the product line, evidence comes from another source, or anyone but an analyst approves."},
+        {id:"c3",rule:"A revert promotes a version that the registry retained.",breaks_if:"A revert builds a new artifact, or promotes a version that the registry did not retain."},
+        {id:"c4",rule:"Every step cites a section of the source page.",breaks_if:"A step has no section cite, or the cited section does not hold the step."},
+        {id:"s1",rule:"Each step has a check that a person can see.",breaks_if:"A step has no check, or its check needs a judgment call."}
+      ], open_for:["wording","order of items","choice of examples"] },
+    llm: { label:"LLM interface", source:"LLM interface",
+      summary:"Read results, check job status, start jobs, propose promotion. Only an analyst approves a stage change.",
+      requires:["stores","lifecycle","orch"], inputs:["llm_access","def:llm_data","def:routing"],
+      goal:"The LLM can read and start jobs within its trigger level. It cannot change a stage.",
+      roles:["llm_interface","analyst","tool_registry","action_log"],
+      still_wrong:["The LLM proposes and a script approves in its place","A trigger level is higher in production than the operator chose","A tool call leaves no log entry"],
+      must_not:["Any path where the LLM changes a model stage","A trigger level above the one the operator chose"],
+      rules:[
+        {id:"c1",rule:"The LLM has four actions: read results, check status, start job, and propose promotion.",breaks_if:"The LLM has a fifth action, or lacks one of the four."},
+        {id:"c2",rule:"Only a signed-in analyst changes a stage.",breaks_if:"Any actor except a signed-in analyst changes a stage, including the LLM and a script."},
+        {id:"c3",rule:"Each action writes one action log entry.",breaks_if:"An action writes no log entry, or writes two."},
+        {id:"c4",rule:"Every step cites a section of the source page.",breaks_if:"A step has no section cite, or the cited section does not hold the step."},
+        {id:"s1",rule:"Each step has a check that a person can see.",breaks_if:"A step has no check, or its check needs a judgment call."}
+      ], open_for:["wording","order of items","choice of examples"] },
+    evalx: { label:"Agent evaluation", source:"Agent evaluation",
+      summary:"Golden set replay before release. In-chat feedback feeds triage.",
+      requires:["llm","stores"], inputs:["def:thresholds","def:golden_owner","def:triage","def:judges"],
+      goal:"An agent version cannot ship until it passes the golden set.",
+      roles:["eval_harness","golden_set_owner","analyst"],
+      still_wrong:["The golden set changes with no review","Scores pass but the area that failed is not named","Feedback goes to the golden set with no triage"],
+      must_not:["A release gate that uses unreviewed feedback","A single score with no area breakdown"],
+      rules:[
+        {id:"c1",rule:"The plan lists the scored areas: retrieval, tool use, grounding, response quality, task completion, guardrails, and cost and latency.",breaks_if:"An area is missing, or the plan gives one score with no area breakdown."},
+        {id:"c2",rule:"Feedback goes through triage before it reaches the golden set.",breaks_if:"Feedback reaches the golden set with no triage step."},
+        {id:"c3",rule:"Every step cites a section of the source page.",breaks_if:"A step has no section cite, or the cited section does not hold the step."},
+        {id:"s1",rule:"Each step has a check that a person can see.",breaks_if:"A step has no check, or its check needs a judgment call."}
+      ], open_for:["wording","order of items","choice of examples"] },
+    iac: { label:"Built as code", source:"Built as code",
+      summary:"One definition for many environments. Tagged releases. Reversible changes.",
+      requires:["env"], inputs:["def:deploy"],
+      goal:"One definition builds every environment. Each change has a reverse step.",
+      roles:["deploy_pipeline","release_owner","cloud_account"],
+      still_wrong:["One definition serves all, but a hand edit changes one environment","A tag exists but points at an unreviewed commit"],
+      must_not:["A hand change to a deployed environment","A long-lived deploy key"],
+      rules:[
+        {id:"c1",rule:"One definition serves all environments.",breaks_if:"A second definition builds one environment, or a hand edit changes a deployed environment."},
+        {id:"c2",rule:"Deploys use a federated identity.",breaks_if:"A deploy uses a long-lived key."},
+        {id:"c3",rule:"Every step cites a section of the source page.",breaks_if:"A step has no section cite, or the cited section does not hold the step."},
+        {id:"s1",rule:"Each step has a check that a person can see.",breaks_if:"A step has no check, or its check needs a judgment call."}
+      ], open_for:["wording","order of items","choice of examples"] },
+    std: { label:"Standards alignment", source:"Standards",
+      summary:"Map the design to NIST AI RMF, ISO/IEC 42001, and the cloud MLOps maturity models.",
+      requires:[], after:["env","stores","lifecycle","orch","llm","evalx","iac"], inputs:[],
+      goal:"Each step of the plan maps to a named control, or the plan marks it unmapped.",
+      roles:["auditor","platform_engineer"],
+      still_wrong:["A mapping claims a control that the plan does not meet","The text cites a standard with the wrong clause"],
+      must_not:["A mapping with no cited clause","A claim of compliance"],
+      rules:[
+        {id:"c1",rule:"Each mapping cites the standard and the clause.",breaks_if:"A mapping names a standard with no clause, or names a clause that the standard lacks."},
+        {id:"c2",rule:'The text says "aligned with". It never says "compliant with".',breaks_if:'The text says "compliant with", or claims a certification.'},
+        {id:"s1",rule:"Each step has a check that a person can see.",breaks_if:"A step has no check, or its check needs a judgment call."}
+      ], open_for:["wording","order of items","choice of examples"] }
+  },
+  // decision pages, in order; each only shows if its module is in scope
+  decisions: [
+    { id:"environments", module:"env", kind:"text", q:"Name the environments the client runs (for example: dev, staging, prod).",
+      note:"The source page uses dev, staging, and prod — two cheap environments and one real one. Name fewer or more if the client differs.", placeholder:"dev, staging, prod" },
+    { id:"owners", module:"env", kind:"choice", q:"Should one team or role own each shared platform store (model store, action log, eval store, and similar)?",
+      note:"The source page does not state this rule. It is a choice for this client.",
+      options:[ {id:"owner_roles",label:"Yes, one owner role for each shared store",eff:"The environments task checks it."},
+                {id:"no_owner_roles",label:"No owner roles",eff:"The environments task skips the check."} ] },
+    { id:"engine", module:"orch", kind:"choice", q:"Choose the workflow engine.",
+      note:"The source page says any engine and compute pair gives the same system.",
+      options:[ {id:"airflow_mwaa",label:"Airflow on MWAA",eff:"Managed Airflow runs the workflow definitions."},
+                {id:"step_functions",label:"Step Functions",eff:"State machines run the workflow definitions."} ] },
+    { id:"compute", module:"orch", kind:"choice", q:"Choose the compute service.",
+      options:[ {id:"batch",label:"AWS Batch",eff:""},{id:"emr",label:"EMR",eff:""},{id:"emr_serverless",label:"EMR Serverless",eff:""} ] },
+    { id:"serving", module:"lifecycle", kind:"choice", q:"How will models deliver predictions — batch jobs only, or do any models also need real-time (online) scoring?",
+      options:[ {id:"batch_only",label:"Batch only",eff:"Default. No real-time layer."},
+                {id:"realtime_layer",label:"Batch and real-time layer",eff:"Adds an optional online serving layer."} ] },
+    { id:"llm_access", module:"llm", kind:"choice", q:"Choose the highest action the LLM may take in production without confirmation.",
+      note:"Promotion always needs a signed-in analyst. This choice cannot change that.",
+      options:[ {id:"read_only",label:"Read results and check job status only",eff:"The LLM reads and reports. It cannot start jobs."},
+                {id:"start_non_prod",label:"Start jobs in non-production without asking",eff:"The LLM can start dev and staging jobs. It asks before prod."},
+                {id:"start_prod_confirm",label:"Start production jobs after operator confirmation",eff:"The LLM asks before any prod job."} ] }
+  ],
+  defaults: [
+    {id:"gates",module:"lifecycle",label:"Gates per product line",def:"Start from the metrics that analysts already review: ROC AUC, precision-recall, calibration, and holdout gap. Add the audit flags."},
+    {id:"retrain",module:"lifecycle",label:"Retraining trigger",def:"An analyst decides from the drift dashboard. The agent may propose."},
+    {id:"outcomes",module:"stores",label:"Outcome feedback",def:"Record real outcomes against the model version in the metadata store. Show them in monitoring."},
+    {id:"retention",module:"stores",label:"Retention and backup",def:"Keep every version that was ever in production. Back up the registry and its artifacts."},
+    {id:"input_checks",module:"orch",label:"Input checks",def:"Check the schema against the data dictionary. Check row counts, null rates, and distributions against expectations or a reference."},
+    {id:"hand_off",module:"orch",label:"Output hand-off",def:"Orchestration hands outputs to consumers and records it on the job."},
+    {id:"cost",module:"orch",label:"Cost limits",def:"Set a maximum capacity for each compute environment or queue. Set a per-run concurrency limit and a per-session LLM budget. Alert on each."},
+    {id:"llm_data",module:"llm",label:"LLM data and safety rules",def:"Send no raw personal data in prompts. Treat content that the agent reads as data and never as instructions."},
+    {id:"routing",module:"llm",label:"Model routing",def:"Use the most capable model for planning and analysis. Use smaller models for routine steps. Run judges on a different model. Routing rules are part of the agent version."},
+    {id:"thresholds",module:"evalx",label:"Agent release thresholds",def:"All guardrail cases must pass. Other scores may not fall below the current release by more than a set margin. Cost and latency regressions are flagged and do not block."},
+    {id:"golden_owner",module:"evalx",label:"Golden set ownership",def:"Each skill or playbook owner owns its cases. Seed the first set from common analyst requests and known failures."},
+    {id:"triage",module:"evalx",label:"Feedback triage",def:"The skill owner reviews flags and corrections each week. Guardrail flags are reviewed the same day."},
+    {id:"judges",module:"evalx",label:"LLM judges",def:"Use a judge only for checks that cannot be done exactly. Run it on a different model from the agent. Calibrate it on human labels first."},
+    {id:"deploy",module:"iac",label:"Deploy automation",def:"Deploy to dev and staging automatically. Deploy to prod after review of the infrastructure diff."}
+  ]
+};
+const DEC_LABELS = { environments:"Environments", owners:"Owner roles", engine:"Workflow engine", compute:"Compute service", serving:"Serving mode", llm_access:"LLM trigger level" };
+
+/* ============================================================ state ======= */
+const S = {
+  node: "intake",
+  engagement: "",
+  needs: {},            // id -> option id ("yes"/"no"/"unsure")
+  scope: [],            // module ids, in pick order
+  addedByReq: {},       // module id -> reason string (auto-added)
+  decisions: {},        // id -> value
+  defaults: {},         // id -> {changed:bool, text:string}
+  ledger: [],
+  visited: [],
+  hash: ""
+};
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function log(ev, data){ S.ledger.push({t:new Date().toISOString().slice(11,19), ev, data:data||"" }); renderSide(); }
+
+/* macro steps for the rail */
+const STEPS = [
+  {k:"intake", label:"Intake"},
+  {k:"needs_page", label:"Needs"},
+  {k:"pick_modules", label:"Modules"},
+  {k:"decisions", label:"Decisions"},
+  {k:"decide_defaults", label:"Defaults"},
+  {k:"contract", label:"Contract"},
+  {k:"build", label:"Build"},
+  {k:"compose", label:"Brief"}
+];
+function stepIndexFor(node){
+  if(node.startsWith("decide_") && node!=="decide_defaults") return 3;
+  const direct = {intake:0,needs_page:1,pick_modules:2,decide_defaults:4,contract:5,build:6,compose:7,done:7};
+  return (node in direct) ? direct[node] : 3;
+}
+
+/* ============================================================ scope logic == */
+function inScope(m){ return S.scope.includes(m); }
+// transitive closure of requires
+function closureOf(mods){
+  const out = new Set(mods);
+  let changed = true;
+  while(changed){ changed=false;
+    for(const m of Array.from(out)){
+      for(const r of (BOOK.modules[m].requires||[])){
+        if(!out.has(r)){ out.add(r); changed=true; }
+      }
+    }
+  }
+  return out;
+}
+// which requires are missing from current picks (for confirm step)
+function missingRequires(picks){
+  const have = new Set(picks);
+  const needed = closureOf(picks);
+  const missing = [];
+  for(const m of needed){ if(!have.has(m)) missing.push(m); }
+  return missing;
+}
+function reasonFor(m, picks){
+  const dependents = picks.filter(p => (BOOK.modules[p].requires||[]).includes(m));
+  if(dependents.length) return BOOK.modules[m].label + " is required by " + dependents.map(d=>BOOK.modules[d].label).join(", ") + ".";
+  // indirect
+  const all = Array.from(closureOf(picks));
+  const dep2 = all.filter(p => (BOOK.modules[p].requires||[]).includes(m));
+  return BOOK.modules[m].label + " is required by " + dep2.map(d=>BOOK.modules[d].label).join(", ") + ".";
+}
+// topological order over scope, tie-broken by BOOK.order, std forced after all
+function buildOrder(){
+  const mods = S.scope.slice();
+  const inset = new Set(mods);
+  const result = [];
+  const placed = new Set();
+  const rank = id => BOOK.order.indexOf(id);
+  let guard = 0;
+  while(result.length < mods.length && guard++ < 100){
+    const ready = mods.filter(m => !placed.has(m) &&
+      (BOOK.modules[m].requires||[]).every(r => !inset.has(r) || placed.has(r)) &&
+      (BOOK.modules[m].after||[]).every(a => !inset.has(a) || placed.has(a)));
+    if(!ready.length){ // cycle guard: place remaining by rank
+      mods.filter(m=>!placed.has(m)).sort((a,b)=>rank(a)-rank(b)).forEach(m=>{placed.add(m);result.push(m);});
+      break;
+    }
+    ready.sort((a,b)=>rank(a)-rank(b));
+    const next = ready[0]; placed.add(next); result.push(next);
+  }
+  return result;
+}
+
+/* ============================================================ navigation === */
+// ordered decision nodes
+const DECISION_NODES = BOOK.decisions.map(d=>"decide_"+d.id);
+function decisionApplies(decId){
+  const d = BOOK.decisions.find(x=>x.id===decId);
+  return d && inScope(d.module);
+}
+function defaultsApply(){ return BOOK.defaults.some(it=>inScope(it.module)); }
+
+function go(node){
+  if(S.node) { if(!S.visited.includes(S.node)) S.visited.push(S.node); }
+  S.node = node;
+  log("page_shown", node);
+  render();
+  document.getElementById("runner").scrollIntoView({behavior:"smooth", block:"start"});
+}
+// compute the next node from a decision/flow position
+function nextDecisionFrom(idx){ // idx into DECISION_NODES, -1 = start
+  for(let i=idx+1;i<BOOK.decisions.length;i++){
+    if(inScope(BOOK.decisions[i].module)) return "decide_"+BOOK.decisions[i].id;
+  }
+  return defaultsApply() ? "decide_defaults" : "contract";
+}
+
+/* ============================================================ render ======= */
+function render(){
+  const st = $("#stage");
+  const step = stepIndexFor(S.node);
+  let body = "";
+  // progress rail
+  const rail = STEPS.map((s,i)=>{
+    const cur = i===step;
+    const done = i<step;
+    const reachable = done; // can click back to earlier macro steps
+    return `<button ${cur?'aria-current="step"':''} class="${done?'done':''}" ${reachable?'':'disabled'} data-step="${s.k}">${esc(s.label)}</button>`;
+  }).join("");
+  body += `<div class="rail">${rail}</div>`;
+
+  const n = S.node;
+  if(n==="intake") body += viewIntake();
+  else if(n==="needs_page") body += viewNeeds();
+  else if(n==="pick_modules") body += viewPick();
+  else if(n.startsWith("decide_") && n!=="decide_defaults") body += viewDecision(n.slice(7));
+  else if(n==="decide_defaults") body += viewDefaults();
+  else if(n==="contract") body += viewContract();
+  else if(n==="build") body += viewBuild();
+  else if(n==="compose") body += viewBrief();
+  else if(n==="done") body += viewDone();
+
+  st.innerHTML = body;
+  wire();
+  renderSide();
+}
+
+function pageHdr(type, title, cite){
+  return `<div class="pagehdr"><span class="ntype">${esc(type)}</span></div>
+          <h2 class="q">${title}</h2>${cite?`<div class="cite">${cite}</div>`:""}`;
+}
+
+/* ---- intake ---- */
+function viewIntake(){
+  return pageHdr("Page — intake", "Describe the engagement") +
+    `<p class="sub">A few lines of context. The agents in the full runner read this; here it is carried into the brief.</p>
+     <label class="fld">Client, the models or apps they run or want, cloud provider and rough team size, and any files for agents to read.</label>
+     <textarea id="engage" rows="6" placeholder="Client: Acme Retail.&#10;Models: churn prediction, demand forecast.&#10;Cloud: AWS, team of 5.&#10;Files: data dictionary, current pipeline README.">${esc(S.engagement)}</textarea>
+     <div class="nav"><span class="spacer"></span><button class="btn p" id="next">Turn the page &rarr;</button></div>`;
+}
+
+/* ---- needs ---- */
+function viewNeeds(){
+  const qs = BOOK.needs.map(q=>{
+    const cur = S.needs[q.id]||"";
+    const seg = [["yes","Yes"],["no","No"],["unsure","Not sure"]].map(([id,lb])=>
+      `<button type="button" data-q="${q.id}" data-a="${id}" aria-pressed="${cur===id}">${lb}</button>`).join("");
+    let sg = "";
+    if(cur==="yes" && q.suggests.length) sg = `<div class="suggests">Suggests: ${q.suggests.map(m=>esc(BOOK.modules[m].label)).join(", ")}</div>`;
+    else if(cur) sg = `<div class="suggests none">No module suggested.</div>`;
+    return `<div class="qblock"><div class="qtext">${esc(q.text)}</div><div class="seg">${seg}</div>${sg}
+            <div class="cite" style="margin-top:7px">Source: ${esc(q.cite)} &middot; <a href="${esc(BOOK.source.href)}">${esc(BOOK.source.title)}</a></div></div>`;
+  }).join("");
+  const answered = BOOK.needs.every(q=>S.needs[q.id]);
+  return pageHdr("Page — needs", "Answer these questions about the client") +
+    `<p class="sub">Each answer can suggest modules. Suggestions are proposals; you choose the scope on the next page.</p>
+     ${qs}
+     <div class="nav"><button class="btn" id="back" data-to="intake">&larr; Back</button><span class="spacer"></span>
+     <button class="btn p" id="next" ${answered?"":"disabled"}>Pick the modules &rarr;</button></div>
+     ${answered?"":'<div class="cite" style="text-align:right;margin-top:8px">Answer every question to continue.</div>'}`;
+}
+
+/* ---- pick modules ---- */
+function viewPick(){
+  // suggested set from needs
+  const suggested = new Set();
+  BOOK.needs.forEach(q=>{ if(S.needs[q.id]==="yes") q.suggests.forEach(m=>suggested.add(m)); });
+  const picks = new Set(S.scope);
+  const rows = BOOK.order.map(m=>{
+    const mod = BOOK.modules[m];
+    const on = picks.has(m);
+    let why = "";
+    if(suggested.has(m)){
+      const qq = BOOK.needs.find(q=>q.suggests.includes(m) && S.needs[q.id]==="yes");
+      why = `<div class="why sg">Suggested &mdash; you answered yes to: &ldquo;${esc(qq? qq.text : "")}&rdquo;</div>`;
+    }
+    const reqOf = (mod.requires||[]).length ? `<div class="why rq">Requires: ${mod.requires.map(r=>esc(BOOK.modules[r].label)).join(", ")}</div>` : "";
+    return `<div class="mod" role="button" tabindex="0" aria-pressed="${on}" data-mod="${m}">
+      <span class="box">${on?"&#10003;":""}</span>
+      <span><span class="mname">${esc(mod.label)}</span><span class="msum" style="display:block">${esc(mod.summary)}</span>${why}${reqOf}</span></div>`;
+  }).join("");
+  return pageHdr("Page — select", "Choose the modules to build") +
+    `<p class="sub">Pick the parts that fit the client. Dependencies are added on the next step, with their reason, for you to approve.</p>
+     <div class="mods">${rows}</div>
+     <div id="confirmReq"></div>
+     <div class="nav"><button class="btn" id="back" data-to="needs_page">&larr; Back</button><span class="spacer"></span>
+     <button class="btn p" id="next" ${S.scope.length?"":"disabled"}>Review dependencies &rarr;</button></div>`;
+}
+
+/* ---- decision pages ---- */
+function viewDecision(decId){
+  const d = BOOK.decisions.find(x=>x.id===decId);
+  const idx = BOOK.decisions.findIndex(x=>x.id===decId);
+  // previous visible decision for the back button
+  let backTo = "pick_modules";
+  for(let i=idx-1;i>=0;i--){ if(inScope(BOOK.decisions[i].module)){ backTo="decide_"+BOOK.decisions[i].id; break; } }
+  const cur = S.decisions[decId];
+  let ctrl = "";
+  if(d.kind==="text"){
+    ctrl = `<textarea id="decText" rows="2" placeholder="${esc(d.placeholder||"")}">${esc(cur||"")}</textarea>`;
+  } else {
+    ctrl = `<div class="opts">`+ d.options.map(o=>
+      `<button class="opt" type="button" aria-pressed="${cur===o.id}" data-opt="${o.id}">
+        <span class="pick"></span><span><span class="lbl">${esc(o.label)}</span>${o.eff?`<span class="eff">${esc(o.eff)}</span>`:""}</span></button>`).join("") + `</div>`;
+  }
+  const ok = d.kind==="text" ? true : !!cur; // text optional-ish but we require choice for choices
+  return pageHdr("Page — decision · "+esc(BOOK.modules[d.module].label), esc(d.q),
+      `Feeds the ${esc(BOOK.modules[d.module].label)} module.`) +
+    `<div style="margin-top:6px">${ctrl}</div>
+     ${d.note?`<div class="note">${esc(d.note)}</div>`:""}
+     <div class="nav"><button class="btn" id="back" data-to="${backTo}">&larr; Back</button><span class="spacer"></span>
+     <button class="btn p" id="next" data-dec="${decId}" ${ok?"":"disabled"}>Continue &rarr;</button></div>`;
+}
+
+/* ---- defaults ---- */
+function viewDefaults(){
+  const items = BOOK.defaults.filter(it=>inScope(it.module));
+  // group by module in build order
+  const order = buildOrder();
+  let html = "";
+  order.forEach(m=>{
+    const mine = items.filter(it=>it.module===m);
+    if(!mine.length) return;
+    html += `<div class="grp">${esc(BOOK.modules[m].label)}</div>`;
+    mine.forEach(it=>{
+      const st = S.defaults[it.id] || {changed:false, text:it.def};
+      html += `<div class="defitem" data-def="${it.id}">
+        <div class="dhdr"><span class="dname">${esc(it.label)}</span><span class="dmod">default</span></div>
+        <div class="dtext" ${st.changed?'style="display:none"':''}>${esc(it.def)}</div>
+        <button class="chg" type="button" data-def="${it.id}">${st.changed?"Revert to default":"Change this default"}</button>
+        ${st.changed?`<textarea data-deftext="${it.id}" rows="3">${esc(st.text)}</textarea>`:""}
+      </div>`;
+    });
+  });
+  // find back target = last applicable decision
+  let backTo = "pick_modules";
+  for(let i=BOOK.decisions.length-1;i>=0;i--){ if(inScope(BOOK.decisions[i].module)){ backTo="decide_"+BOOK.decisions[i].id; break; } }
+  return pageHdr("Page — defaults", "These decisions have a default. Accept all, or change some.",
+      `From the Decisions tab of the source page. Showing only items for modules in scope.`) +
+    html +
+    `<div class="nav"><button class="btn" id="back" data-to="${backTo}">&larr; Back</button>
+     <button class="btn ghost" id="acceptAll">Accept all defaults</button><span class="spacer"></span>
+     <button class="btn p" id="next">Review the contract &rarr;</button></div>`;
+}
+
+/* ---- contract ---- */
+function viewContract(){
+  const order = buildOrder();
+  const q = order.map((m,i)=>{
+    const mod = BOOK.modules[m];
+    const dep = (mod.requires||[]).filter(r=>inScope(r));
+    return `<li><div class="qn">${i+1}. ${esc(mod.label)}</div>
+      <div class="qg">Goal: ${esc(mod.goal)}</div>
+      <div class="qdep">${dep.length?("Depends on: "+dep.map(r=>esc(BOOK.modules[r].label)).join(", ")+" &middot; "):""}${mod.rules.length} rules, each with a failure case the agent must test.</div></li>`;
+  }).join("");
+  // need reasons
+  const needReasons = BOOK.needs.filter(qq=>S.needs[qq.id]==="yes" && qq.suggests.some(inScope))
+    .map(qq=>`<li>&ldquo;${esc(qq.text)}&rdquo; &rarr; ${qq.suggests.filter(inScope).map(m=>esc(BOOK.modules[m].label)).join(", ")}</li>`).join("");
+  const reqAdded = Object.keys(S.addedByReq).length
+    ? `<div class="note"><b>Added by dependency:</b><ul style="margin:6px 0 0;padding-left:18px">${Object.entries(S.addedByReq).map(([m,r])=>`<li>${esc(BOOK.modules[m].label)} &mdash; ${esc(r)}</li>`).join("")}</ul></div>` : "";
+
+  // decisions summary
+  const decRows = Object.entries(S.decisions).filter(([k])=>DEC_LABELS[k]).map(([k,v])=>{
+    const d = BOOK.decisions.find(x=>x.id===k);
+    let txt = v;
+    if(d && d.kind==="choice"){ const o=d.options.find(o=>o.id===v); txt = o?o.label:v; }
+    return `<dt>${esc(DEC_LABELS[k])}</dt><dd>${esc(txt)}</dd>`;
+  }).join("");
+
+  return pageHdr("Page — contract", "Review the work queue. Nothing starts until you approve.") +
+    reqAdded +
+    `<h3>The queue, in dependency order</h3><ol class="queue" style="counter-reset:none">${q}</ol>
+     ${decRows?`<h3>Decisions on record</h3><div class="summary"><dl>${decRows}</dl></div>`:""}
+     ${needReasons?`<h3>Why these modules</h3><div class="summary"><ul style="margin:6px 0;padding-left:18px;color:var(--muted)">${needReasons}</ul></div>`:""}
+     <div class="hashline" id="hashline">Computing scope hash&hellip;</div>
+     <div class="note">On approval the book records a SHA-256 of the scope and every decision. The runner refuses to start a task whose boundary hash differs from this one.</div>
+     <div class="nav">
+       <button class="btn" id="back" data-to="pick_modules">&larr; Change scope</button>
+       <button class="btn ghost" id="stop">Stop here</button><span class="spacer"></span>
+       <button class="btn p" id="approve">Approve the queue &rarr;</button></div>`;
+}
+
+/* ---- build (dispatch stand-in) ---- */
+function viewBuild(){
+  const order = buildOrder();
+  const rows = order.map((m,i)=>`<li><div class="qn">${i+1}. ${esc(BOOK.modules[m].label)}</div>
+     <div class="qg">Boundary assembled: goal, ${BOOK.modules[m].rules.length} rules with failure cases, ${BOOK.modules[m].roles.length} roles, must-nots and checks.</div></li>`).join("");
+  return pageHdr("Page — dispatch", "The queue is approved") +
+   `<p class="sub">In the full runner, each task now goes to an agent that writes the module plan inside this boundary, and a skeptic agent rules on every step. Here the book composes the boundaries directly into a build brief.</p>
+    <ol class="queue">${rows}</ol>
+    <div class="note">No agent runs on this page. The brief below is the deterministic <code>compose</code> output: one section per module, each carrying the specification the agents would build against.</div>
+    <div class="nav"><button class="btn" id="back" data-to="contract">&larr; Back</button><span class="spacer"></span>
+    <button class="btn p" id="compose">Compose the build brief &rarr;</button></div>`;
+}
+
+/* ---- brief ---- */
+function viewBrief(){
+  const md = composeBrief();
+  S._briefMd = md;
+  return pageHdr("Page — compose", "Your bespoke build brief") +
+   `<p class="sub">One section per approved module, in dependency order, shaped to the decisions you made. Copy it or download the Markdown.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 12px">
+      <button class="btn p" id="copy">Copy Markdown</button>
+      <button class="btn" id="download">Download .md</button>
+      <span class="toast" id="toast" role="status"></span></div>
+    <pre class="brief" id="briefText">${esc(md)}</pre>
+    <div class="nav"><button class="btn" id="back" data-to="contract">&larr; Back to contract</button>
+      <button class="btn ghost" id="restart">Start a new book</button><span class="spacer"></span></div>`;
+}
+function viewDone(){
+  return pageHdr("Page — end", "The book ends here") +
+    `<p class="sub">The ledger holds every choice, check, and waiver. You chose to stop before composing a brief.</p>
+     <div class="nav"><button class="btn" id="back" data-to="contract">&larr; Back</button>
+     <button class="btn ghost" id="restart">Start a new book</button><span class="spacer"></span></div>`;
+}
+
+/* ============================================================ compose ====== */
+function composeBrief(){
+  const order = buildOrder();
+  const L = [];
+  const client = (S.engagement.match(/client[:\-]\s*(.+)/i)||[])[1] || "the client";
+  L.push(`# MLOps build brief`);
+  L.push(``);
+  L.push(`Composed by Pathbook \`${BOOK.id}\` (book v${BOOK.version}) from the ${BOOK.source.title} v${BOOK.source.version}.`);
+  L.push(`Generated ${new Date().toISOString().slice(0,10)}. Scope hash \`${S.hash||"(unsigned)"}\`.`);
+  L.push(``);
+  L.push(`> This brief is the deterministic Pathbook output: the scope, the decisions, and each module's boundary. The module *plans* — the step-by-step prose — are written by agents in the full runner, against these boundaries. The needs questions are a stand-in pending consultant approval; the \`breaks_if\` lines are drafts.`);
+  L.push(``);
+  L.push(`## Engagement`);
+  L.push(``);
+  L.push(S.engagement.trim() ? S.engagement.trim() : "_No engagement detail entered._");
+  L.push(``);
+  L.push(`## Scope`);
+  L.push(``);
+  order.forEach(m=>{
+    const tag = S.addedByReq[m] ? " _(added by dependency)_" : "";
+    L.push(`- **${BOOK.modules[m].label}**${tag} — ${BOOK.modules[m].summary}`);
+  });
+  L.push(``);
+  // decisions
+  const decEntries = Object.entries(S.decisions).filter(([k])=>DEC_LABELS[k]);
+  if(decEntries.length){
+    L.push(`## Decisions`);
+    L.push(``);
+    decEntries.forEach(([k,v])=>{
+      const d = BOOK.decisions.find(x=>x.id===k);
+      let txt=v, eff="";
+      if(d && d.kind==="choice"){ const o=d.options.find(o=>o.id===v); if(o){txt=o.label; eff=o.eff?(" — "+o.eff):"";} }
+      L.push(`- **${DEC_LABELS[k]}:** ${txt}${eff}`);
+    });
+    L.push(``);
+  }
+  // defaults in scope
+  const defItems = BOOK.defaults.filter(it=>inScope(it.module));
+  if(defItems.length){
+    L.push(`## Decisions with defaults`);
+    L.push(``);
+    defItems.forEach(it=>{
+      const st = S.defaults[it.id];
+      const changed = st && st.changed && st.text.trim() && st.text.trim()!==it.def;
+      L.push(`- **${it.label}** ${changed?"_(changed)_":"_(default)_"}: ${changed?st.text.trim():it.def}`);
+    });
+    L.push(``);
+  }
+  // per module
+  L.push(`## Module build boundaries`);
+  L.push(``);
+  L.push(`Each boundary is the contract an agent builds the module plan against. A rule without a failure case is a wish, so every rule names how it fails.`);
+  L.push(``);
+  order.forEach((m,i)=>{
+    const mod = BOOK.modules[m];
+    L.push(`### ${i+1}. ${mod.label}`);
+    L.push(``);
+    L.push(`*Source: ${mod.source} — ${BOOK.source.title} v${BOOK.source.version}.*`);
+    if((mod.requires||[]).filter(inScope).length) L.push(`*Depends on: ${mod.requires.filter(inScope).map(r=>BOOK.modules[r].label).join(", ")}.*`);
+    L.push(``);
+    L.push(`**Goal.** ${mod.goal}`);
+    L.push(``);
+    L.push(`**Roles.** ${mod.roles.join(", ")}.`);
+    L.push(``);
+    // inputs resolved
+    const ins = resolveInputs(mod);
+    if(ins.length){ L.push(`**Shaped by your choices.**`); ins.forEach(x=>L.push(`- ${x}`)); L.push(``); }
+    L.push(`**Rules (each with its failure case).**`);
+    L.push(``);
+    L.push(`| # | Rule | Fails if |`);
+    L.push(`|---|------|----------|`);
+    mod.rules.forEach(r=> L.push(`| ${r.id} | ${mdCell(r.rule)} | ${mdCell(r.breaks_if)} |`));
+    L.push(``);
+    L.push(`**Must not.** ${mod.must_not.join("; ")}.`);
+    L.push(``);
+    L.push(`**Wrong on purpose (although every rule holds).** ${mod.still_wrong.join("; ")}.`);
+    L.push(``);
+    L.push(`**Open for variation.** ${mod.open_for.join(", ")}.`);
+    L.push(``);
+  });
+  L.push(`---`);
+  L.push(``);
+  L.push(`### Not produced here`);
+  L.push(``);
+  L.push(`- The module **plans** (step-by-step prose) — written by the \`drafter\` agent and ruled on by the \`sentinel\` in the full runner.`);
+  L.push(`- The verifier runs (\`schema\`, \`refs\`, \`shape\`, STE lint) and the append-only ledger.`);
+  L.push(`- Consultant approval of the generated needs questions.`);
+  L.push(``);
+  L.push(`_Aligned with the MLOps reference architecture; not a claim of compliance with any standard._`);
+  return L.join("\n");
+}
+function mdCell(s){ return String(s).replace(/\|/g,"\\|").replace(/\n/g," "); }
+function resolveInputs(mod){
+  const out = [];
+  (mod.inputs||[]).forEach(key=>{
+    if(key.startsWith("def:")){
+      const id = key.slice(4); const it = BOOK.defaults.find(d=>d.id===id);
+      if(it){ const st=S.defaults[id]; const changed = st&&st.changed&&st.text.trim()&&st.text.trim()!==it.def;
+        out.push(`${it.label}: ${changed?st.text.trim():it.def}`); }
+    } else {
+      const v = S.decisions[key]; if(v==null||v==="") return;
+      const d = BOOK.decisions.find(x=>x.id===key);
+      let txt=v; if(d&&d.kind==="choice"){ const o=d.options.find(o=>o.id===v); if(o) txt=o.label; }
+      out.push(`${DEC_LABELS[key]||key}: ${txt}`);
+    }
+  });
+  return out;
+}
+
+/* ============================================================ sidebar ====== */
+function renderSide(){
+  // scope
+  const order = S.scope.length ? buildOrder() : [];
+  const sl = $("#scopeList");
+  if(sl){
+    sl.innerHTML = order.length ? order.map(m=>{
+      const req = S.addedByReq[m] ? `<span class="r">(dep)</span>` : "";
+      return `<li>&#9656; ${esc(BOOK.modules[m].label)} ${req}</li>`;
+    }).join("") : `<li class="empty">No modules chosen yet.</li>`;
+  }
+  // decisions
+  const dl = $("#decsList");
+  if(dl){
+    const ds = Object.entries(S.decisions).filter(([k])=>DEC_LABELS[k]);
+    dl.innerHTML = ds.length ? ds.map(([k,v])=>{
+      const d = BOOK.decisions.find(x=>x.id===k); let txt=v;
+      if(d&&d.kind==="choice"){ const o=d.options.find(o=>o.id===v); if(o) txt=o.label; }
+      return `<b>${esc(DEC_LABELS[k])}:</b> ${esc(txt)}`;
+    }).join("<br>") : `<span style="color:var(--faint);font-style:italic">None recorded yet.</span>`;
+  }
+  const led = $("#led");
+  if(led){ led.innerHTML = S.ledger.slice(-40).map(e=>`<div><b>${esc(e.ev)}</b> ${esc(typeof e.data==="string"?e.data:JSON.stringify(e.data))} <span style="color:var(--faint)">${e.t}</span></div>`).join(""); led.scrollTop = led.scrollHeight; }
+}
+
+/* ============================================================ wiring ======= */
+function wire(){
+  // rail
+  document.querySelectorAll(".rail button[data-step]").forEach(b=>{
+    if(b.disabled) return;
+    b.addEventListener("click",()=>{ const k=b.dataset.step; if(k==="decisions"){ const first = BOOK.decisions.find(d=>inScope(d.module)); go(first?"decide_"+first.id:"pick_modules"); } else go(k); });
+  });
+  const back = $("#back"); if(back) back.addEventListener("click",()=>go(back.dataset.to));
+  const restart = $("#restart"); if(restart) restart.addEventListener("click",()=>{ if(confirm("Start a new book? This clears every choice.")) location.reload(); });
+
+  const n = S.node;
+  if(n==="intake"){
+    $("#next").addEventListener("click",()=>{ S.engagement = $("#engage").value; log("choice_made","intake"); go("needs_page"); });
+  }
+  else if(n==="needs_page"){
+    document.querySelectorAll(".seg button[data-q]").forEach(b=> b.addEventListener("click",()=>{
+      S.needs[b.dataset.q]=b.dataset.a; log("choice_made", b.dataset.q+"="+b.dataset.a); render();
+    }));
+    $("#next").addEventListener("click",()=>go("pick_modules"));
+  }
+  else if(n==="pick_modules"){
+    const toggle = el=>{ const m=el.dataset.mod; const i=S.scope.indexOf(m);
+      if(i>=0){ S.scope.splice(i,1); delete S.addedByReq[m]; } else { S.scope.push(m); }
+      log("choice_made","pick "+m); render(); };
+    document.querySelectorAll(".mod").forEach(el=>{
+      el.addEventListener("click",()=>toggle(el));
+      el.addEventListener("keydown",e=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); toggle(el); } });
+    });
+    const next = $("#next"); if(next) next.addEventListener("click",()=>confirmRequires());
+  }
+  else if(n.startsWith("decide_") && n!=="decide_defaults"){
+    const decId = n.slice(7); const d=BOOK.decisions.find(x=>x.id===decId);
+    if(d.kind==="choice"){
+      document.querySelectorAll(".opt[data-opt]").forEach(b=> b.addEventListener("click",()=>{
+        S.decisions[decId]=b.dataset.opt; log("choice_made", decId+"="+b.dataset.opt); render();
+      }));
+    }
+    const next=$("#next"); if(next) next.addEventListener("click",()=>{
+      if(d.kind==="text"){ S.decisions[decId]=$("#decText").value; log("choice_made", decId); }
+      const idx = BOOK.decisions.findIndex(x=>x.id===decId);
+      go(nextDecisionFrom(idx));
+    });
+  }
+  else if(n==="decide_defaults"){
+    document.querySelectorAll(".chg[data-def]").forEach(b=> b.addEventListener("click",()=>{
+      const id=b.dataset.def; const it=BOOK.defaults.find(d=>d.id===id);
+      const cur=S.defaults[id]||{changed:false,text:it.def};
+      S.defaults[id]={changed:!cur.changed, text:cur.text||it.def}; log("choice_made","default "+id+(S.defaults[id].changed?" changed":" reverted")); render();
+    }));
+    document.querySelectorAll("textarea[data-deftext]").forEach(t=> t.addEventListener("input",()=>{
+      const id=t.dataset.deftext; S.defaults[id]={changed:true, text:t.value};
+    }));
+    $("#acceptAll").addEventListener("click",()=>{ BOOK.defaults.forEach(it=>{ if(S.defaults[it.id]) S.defaults[it.id].changed=false; }); log("choice_made","accept all defaults"); render(); });
+    $("#next").addEventListener("click",()=>go("contract"));
+  }
+  else if(n==="contract"){
+    computeHash().then(h=>{ S.hash=h; const el=$("#hashline"); if(el) el.textContent = "scope+decisions SHA-256: "+h; });
+    $("#approve").addEventListener("click",()=>{ log("contract_approved", S.hash.slice(0,16)); go("build"); });
+    $("#stop").addEventListener("click",()=>go("done"));
+  }
+  else if(n==="build"){
+    $("#compose").addEventListener("click",()=>{ log("composed", S.scope.length+" modules"); go("compose"); });
+  }
+  else if(n==="compose"){
+    $("#copy").addEventListener("click",async()=>{ try{ await navigator.clipboard.writeText(S._briefMd); toast("Copied."); }catch(e){ toast("Copy failed — select and copy manually."); } });
+    $("#download").addEventListener("click",()=>{
+      const client=(S.engagement.match(/client[:\-]\s*(.+)/i)||[])[1]||"client";
+      const slug=client.trim().toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"").slice(0,40)||"client";
+      const blob=new Blob([S._briefMd],{type:"text/markdown"}); const url=URL.createObjectURL(blob);
+      const a=document.createElement("a"); a.href=url; a.download="mlops_build_brief_"+slug+".md"; a.click(); URL.revokeObjectURL(url); toast("Downloaded.");
+    });
+  }
+}
+function toast(m){ const t=$("#toast"); if(t){ t.textContent=m; setTimeout(()=>{ if(t) t.textContent=""; },2600); } }
+
+/* confirm_requires: show missing requires with reason, approve, then advance */
+function confirmRequires(){
+  const missing = missingRequires(S.scope);
+  if(!missing.length){ advanceFromPick(); return; }
+  const box = $("#confirmReq");
+  const list = missing.map(m=>`<li>${esc(BOOK.modules[m].label)} &mdash; ${esc(reasonFor(m, S.scope))}</li>`).join("");
+  box.innerHTML = `<div class="note warn"><b>These modules are required by your picks.</b> The operator approves every addition to scope.
+    <ul style="margin:8px 0 0;padding-left:18px">${list}</ul>
+    <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn p" id="addReq">Add and approve</button>
+      <button class="btn" id="cancelReq">Not now</button></div></div>`;
+  $("#addReq").addEventListener("click",()=>{
+    missing.forEach(m=>{ if(!S.scope.includes(m)){ S.scope.push(m); S.addedByReq[m]=reasonFor(m, S.scope); } });
+    log("scope_set", "requires: "+missing.join(","));
+    advanceFromPick();
+  });
+  $("#cancelReq").addEventListener("click",()=>{ box.innerHTML=""; });
+  box.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function advanceFromPick(){
+  log("scope_set", S.scope.join(","));
+  const first = BOOK.decisions.find(d=>inScope(d.module));
+  go(first ? "decide_"+first.id : (defaultsApply()?"decide_defaults":"contract"));
+}
+
+/* SHA-256 of scope + decisions (approval hash) */
+async function computeHash(){
+  const payload = JSON.stringify({ scope:buildOrder(), needs:S.needs, decisions:S.decisions,
+    defaults:Object.fromEntries(Object.entries(S.defaults).filter(([_,v])=>v&&v.changed).map(([k,v])=>[k,v.text])) });
+  try{
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+  }catch(e){ // fallback tiny hash
+    let h=0; for(let i=0;i<payload.length;i++){ h=(h*31+payload.charCodeAt(i))>>>0; } return "fnv_"+h.toString(16);
+  }
+}
+
+/* boot */
+log("page_shown","intake");
+render();
+</script>
+</body>
+</html>

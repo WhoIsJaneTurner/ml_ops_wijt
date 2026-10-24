@@ -173,6 +173,7 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}
     </div>
     <ul class="list" id="list">
       <!-- Fallback when JavaScript is off -->
+      <li class="item"><time>Oct 24, 2026</time><div><h3><a href="pathbook_mlops.html">Pathbook: the MLOps engagement</a></h3></div><div class="side">Template</div></li>
       <li class="item"><time>Oct 8, 2026</time><div><h3><a href="agent_orchestrator_reference.html">A well-built agent orchestrator</a></h3></div><div class="side">v1.0</div></li>
       <li class="item"><time>Oct 7, 2026</time><div><h3><a href="verification_contract.html">The verification contract</a></h3></div><div class="side">v1.0</div></li>
       <li class="item"><time>Oct 6, 2026</time><div><h3><a href="responsible_agent_framework.html">Responsible agent deployment and evaluation (draft)</a></h3></div><div class="side">v0.4</div></li>
@@ -211,6 +212,18 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}
    featured: true puts an article in the lead slot (else the newest).
    --------------------------------------------------------------- */
 const ARTICLES = [
+  {
+    href: "pathbook_mlops.html",
+    title: "Pathbook: the MLOps engagement",
+    dek: "An operator-gated \"choose your path\" book that turns the MLOps reference architecture into optional modules. Answer a few plain questions about the client, pick the modules that fit, record each module's decisions, approve a work queue with a SHA-256 scope hash, and compose a bespoke build brief — one section per module, each carrying its goal, roles, must-nots and the rules with their failure case written out. Runs the deterministic spine of the Pathbook spec in the browser; the module plans are left to the runner's agents.",
+    date: "2026-10-24",
+    version: "0.2",
+    type: "Template",
+    topics: ["MLOps", "Agents", "Governance"],
+    minutes: 10,
+    featured: false,
+    sections: ["Intake","Needs","Modules","Decisions","Defaults","Contract","Build brief"]
+  },
   {
     href: "agent_orchestrator_reference.html",
     title: "A well-built agent orchestrator",
