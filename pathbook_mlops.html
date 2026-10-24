@@ -199,7 +199,7 @@ footer a{color:var(--accent-2)}
   </div>
 
   <div class="intro">
-    <p>A <b>Pathbook</b> turns an architecture into a menu. The consultant defines the architecture once; the book makes every part of it an optional module. A client operator chooses the modules that fit, answers a few plain questions, records the decisions each module needs, and approves a work queue. Nothing is added to scope except by a choice on the page &mdash; the operator holds scope, the book never widens it on its own.</p>
+    <p>A <b>Pathbook</b> turns an architecture into a menu. The consultant defines the architecture once; the book makes every part of it an optional module. A client operator chooses the modules that fit, answers a few plain questions, records the decisions each module needs, and approves a work queue. Nothing is added to scope except by a choice on the page &mdash; the operator holds scope, the book never widens it on its own. If the client already runs tools like MLflow, Weights &amp; Biases, ClearML or ZenML, the book inventories them, asks how to treat each, and composes a <i>gap plan</i> &mdash; what the stack already satisfies and what must be added so each invariant holds &mdash; rather than a greenfield one.</p>
 
     <div class="note"><b>What this page runs, and what it does not.</b> This is the deterministic spine of the book, run in your browser: the pages, the picks, the dependency resolution, the gates, the contract hash and the compose step. It stops where the real Pathbook runner would hand each module to an agent to write the plan prose. So the brief you get here carries every module's <i>boundary</i> &mdash; its goal, its rules with the failure case (<code>breaks_if</code>) written out, its roles, its must-nots and its checks &mdash; which is the exact specification those agents would build against. No agent runs here, and nothing you enter leaves your browser.</p></div>
 
@@ -406,6 +406,390 @@ const BOOK = {
 };
 const DEC_LABELS = { environments:"Environments", owners:"Owner roles", engine:"Workflow engine", compute:"Compute service", serving:"Serving mode", llm_access:"LLM trigger level" };
 
+/* ============================================================
+   EXISTING INFRASTRUCTURE — capability slots + tool adapters.
+   The architecture is capability-based, not vendor-based. A client's
+   tool fills some slots; the question is whether it satisfies the
+   module invariant, or only part of it (a gap to close).
+   ============================================================ */
+const SLOTS = {
+  tracking:"Experiment & metadata tracking", registry:"Model registry & stage promotion",
+  model_store:"Model / artifact store", feature_catalog:"Feature catalog",
+  orchestration:"Pipeline orchestration", compute:"Managed compute",
+  job_store:"Job / run store & queues", serving:"Model serving",
+  monitoring:"Monitoring & drift", action_log:"Action log (audit)", eval_store:"Eval store / agent eval"
+};
+// which capability slots each module depends on (empty = built fresh, no external product)
+const MODULE_SLOTS = {
+  env:[], stores:["tracking","model_store","feature_catalog","job_store","action_log","eval_store"],
+  orch:["orchestration","compute","monitoring"], lifecycle:["registry"], llm:[],
+  evalx:["eval_store"], iac:[], std:[]
+};
+const DISPOSITIONS = [
+  {id:"adopt", label:"Adopt", eff:"Keep it as the system of record for this slot."},
+  {id:"wrap", label:"Wrap", eff:"Keep it, but behind the architecture's interface."},
+  {id:"extend", label:"Extend", eff:"Keep it and add the controls it lacks."},
+  {id:"replace", label:"Replace", eff:"Retire it; build the slot fresh."},
+  {id:"defer", label:"Defer", eff:"Leave it out of scope for now."}
+];
+const TOOL_ORDER = ["mlflow","wandb","clearml","zenml","airflow","dagster","prefect","sagemaker","vertex","kubeflow","feast","dvc","other"];
+// conformance status: native | partial | gap | conflict, keyed by "<module>.<ruleId>"
+const TOOLS = {
+  mlflow:{ label:"MLflow", provides:["tracking","registry","model_store"], version:"2.x", source:"MLflow Model Registry docs", mcp:"mlflow",
+    conformance:{
+      "lifecycle.c1":{status:"native",note:"Map Candidate / Production / Previous onto registry stages or version aliases.",
+        probe:{mode:"live",via:"mlflow",ask:"the stages and aliases defined on the registered models",confirms:"the three stages map cleanly onto existing stages or aliases"}},
+      "lifecycle.c2":{status:"gap",note:"The registry does not refuse a stage change for missing evidence and carries no analyst identity on the transition. Add a promotion gate that checks evidence on the exact version and records a signed approval.",
+        probe:{mode:"live",via:"mlflow",ask:"the transition rules and required checks on a stage change for the registered models",confirms:"no rule requires attached evidence or a named approver on the transition"}},
+      "lifecycle.c3":{status:"native",note:"Older versions are retained; a revert re-aliases a retained version with no rebuild."},
+      "stores.c1":{status:"partial",note:"Runs and models carry writer/reader through workspace permissions; state the roles explicitly."},
+      "stores.c2":{status:"gap",note:"No append-only action log. Supply one in the stores module.",
+        probe:{mode:"capability",via:"mlflow",ask:"whether MLflow exposes an append-only, tamper-evident audit log surface",confirms:"no such surface exists"}}
+    }},
+  wandb:{ label:"Weights & Biases", provides:["tracking","model_store","registry"], version:"current", source:"W&B Registry & Artifacts",
+    conformance:{
+      "lifecycle.c1":{status:"native",note:"Registry collections use aliases; map the three stages onto them."},
+      "lifecycle.c2":{status:"gap",note:"No evidence-gated, signed promotion. Add the gate."},
+      "stores.c1":{status:"native",note:"Artifacts record produced-by / used-by lineage."},
+      "stores.c2":{status:"gap",note:"No append-only action log."},
+      "evalx.c1":{status:"partial",note:"Weave can score areas, but the golden-set replay gate is still yours to build."}
+    }},
+  clearml:{ label:"ClearML", provides:["tracking","orchestration","job_store","model_store","serving","compute"], version:"current", source:"ClearML pipelines & model repo",
+    conformance:{
+      "orch.c1":{status:"gap",note:"Pipeline steps run in order; input-first / output-last checks are not enforced. Add them as explicit steps."},
+      "orch.c2":{status:"native",note:"The pipeline and its queue name the engine and compute."},
+      "orch.c3":{status:"partial",note:"Alerts can be driven from pipeline events."},
+      "lifecycle.c1":{status:"partial",note:"The model repo stores versions; stage governance is light. Add the gate."},
+      "stores.c2":{status:"gap",note:"The action log is not append-only by default."}
+    }},
+  zenml:{ label:"ZenML", provides:["orchestration","registry","model_store","tracking"], version:"current", source:"ZenML stacks & Model Control Plane",
+    note:"A stack layer that wraps MLflow, W&B and other backends.",
+    conformance:{
+      "orch.c1":{status:"gap",note:"Steps run in declared order; add explicit input and output check steps."},
+      "orch.c2":{status:"native",note:"The active stack names the orchestrator and the compute backend."},
+      "lifecycle.c1":{status:"native",note:"The Model Control Plane has stages; map Candidate / Production / Previous onto them."},
+      "lifecycle.c2":{status:"gap",note:"No signed, evidence-gated promotion. Add it."}
+    }},
+  airflow:{ label:"Apache Airflow", provides:["orchestration","job_store"], version:"2.x / 3.x", source:"Airflow DAGs & executors",
+    conformance:{
+      "orch.c1":{status:"gap",note:"DAGs run tasks in declared order; add explicit input-first and output-last check tasks."},
+      "orch.c2":{status:"native",note:"The DAG and its executor name the engine and compute."},
+      "orch.c3":{status:"partial",note:"Alerts can fire from DAG and task events (callbacks, SLAs)."}
+    }},
+  dagster:{ label:"Dagster", provides:["orchestration","job_store","tracking"], version:"current", source:"Dagster jobs & asset checks",
+    conformance:{
+      "orch.c1":{status:"partial",note:"Asset checks exist; wire input-first and output-last checks explicitly into the job."},
+      "orch.c2":{status:"native",note:"The job and its run launcher name the engine and compute."},
+      "orch.c3":{status:"partial",note:"Alerts come from run and asset events (sensors, hooks)."}
+    }},
+  prefect:{ label:"Prefect", provides:["orchestration","job_store"], version:"2.x / 3.x", source:"Prefect flows & work pools",
+    conformance:{
+      "orch.c1":{status:"gap",note:"Flows run tasks in order; add explicit input and output check tasks."},
+      "orch.c2":{status:"native",note:"The flow and its work pool name the engine and compute."},
+      "orch.c3":{status:"partial",note:"Alerts come from flow-run state-change automations."}
+    }},
+  sagemaker:{ label:"SageMaker", provides:["registry","model_store","orchestration","compute","serving","monitoring","tracking"], version:"current", source:"SageMaker Model Registry & Pipelines", mcp:"aws",
+    conformance:{
+      "lifecycle.c1":{status:"native",note:"Model package groups carry versions; map the three stages."},
+      "lifecycle.c2":{status:"partial",note:"The registry has an approval status and gated deployment; wire the analyst identity and the evidence check into it.",
+        probe:{mode:"live",via:"aws",ask:"the model package group approval configuration and who may set ApprovalStatus",confirms:"approval is not bound to a named analyst identity, or no evidence gate is attached"}},
+      "orch.c1":{status:"gap",note:"Add explicit input and output check steps to the pipeline."}
+    }},
+  vertex:{ label:"Vertex AI", provides:["registry","model_store","orchestration","tracking","serving","monitoring"], version:"current", source:"Vertex AI Model Registry & Pipelines",
+    conformance:{
+      "lifecycle.c1":{status:"native",note:"Model Registry holds versions and aliases; map the three stages."},
+      "lifecycle.c2":{status:"gap",note:"No evidence-gated, signed promotion. Add the gate."},
+      "orch.c1":{status:"gap",note:"Add explicit input and output check steps to the pipeline."}
+    }},
+  kubeflow:{ label:"Kubeflow", provides:["orchestration","tracking","serving"], version:"current", source:"Kubeflow Pipelines",
+    conformance:{ "orch.c2":{status:"native",note:"Pipelines name the backend; pair with a compute decision."},
+      "orch.c1":{status:"gap",note:"Add explicit input and output check components."} }},
+  feast:{ label:"Feast", provides:["feature_catalog"], version:"current", source:"Feast feature store",
+    conformance:{} },
+  dvc:{ label:"DVC", provides:["model_store","tracking"], version:"current", source:"DVC data & model versioning",
+    conformance:{ "stores.c1":{status:"partial",note:"Versions data and models by git; state the writer/reader roles."} }},
+  other:{ label:"Other / in-house", provides:[], version:"n/a", source:"",
+    conformance:{} }
+};
+const DISP_RANK = {native:3, partial:2, gap:1, conflict:0};
+
+/* ---- MCP servers, agent hosts, and read-only verification access (prototype slice) ---- */
+const MCP_SERVERS = {
+  aws:{ label:"AWS MCP Server", provider:"aws", slots:["orchestration","compute","registry","model_store","monitoring"], modes:["capability","live"] },
+  aws_knowledge:{ label:"AWS Knowledge MCP Server", provider:"aws", slots:["*"], modes:["capability"] },
+  mlflow:{ label:"MLflow MCP server", provider:"mlflow", slots:["tracking","registry","model_store"], modes:["capability","live"] }
+};
+const AGENT_HOSTS = [
+  {id:"claude",   label:"Claude (Anthropic)",        family:"anthropic",   mcp:"native"},
+  {id:"openai",   label:"OpenAI / ChatGPT",          family:"openai",      mcp:"native SDK"},
+  {id:"gemini",   label:"Google Gemini",             family:"google",      mcp:"native SDK"},
+  {id:"deepseek", label:"DeepSeek",                  family:"deepseek",    mcp:"bridged"},
+  {id:"local",    label:"Local / open-weight",       family:"open_weight", mcp:"bridged"}
+];
+const MCP_ACCESS = [
+  {id:"none",         label:"No live calls — verify from docs only", eff:"Capability probes only; live claims stay unverified."},
+  {id:"nonprod",      label:"Read dev and staging only",             eff:"Live probes against non-production. Prod claims stay unverified."},
+  {id:"prod_confirm", label:"Read production after I confirm each",   eff:"Live probes against prod, one operator confirm per server."}
+];
+
+/* ---- gap engine ---- */
+function toolsForSlot(slot){ return S.infra.tools.filter(t=>(TOOLS[t].provides||[]).includes(slot)); }
+function assignedToolsForModule(m){
+  const set = new Set();
+  (MODULE_SLOTS[m]||[]).forEach(s=>toolsForSlot(s).forEach(t=>{
+    const d = S.infra.disp[t]||"adopt"; if(d!=="replace" && d!=="defer") set.add(t);
+  }));
+  return Array.from(set);
+}
+function computeGap(){
+  const per = {};
+  S.scope.forEach(m=>{
+    const tools = assignedToolsForModule(m);
+    if(!tools.length){ per[m]={greenfield:true, tools:[], native:[], gaps:[], conflicts:[], buildOn:[]}; return; }
+    const native=[], gaps=[], conflicts=[], buildOn=[];
+    BOOK.modules[m].rules.forEach(r=>{
+      const key = m+"."+r.id; let best=null, bestTool=null;
+      tools.forEach(t=>{ const c=(TOOLS[t].conformance||{})[key];
+        if(c && (best===null || DISP_RANK[c.status]>DISP_RANK[best.status])){ best=c; bestTool=t; } });
+      if(!best) buildOn.push({rule:r});
+      else if(best.status==="native") native.push({rule:r, tool:bestTool, note:best.note});
+      else if(best.status==="conflict") conflicts.push({rule:r, tool:bestTool, note:best.note});
+      else gaps.push({rule:r, tool:bestTool, status:best.status, note:best.note});
+    });
+    per[m]={greenfield:false, tools, native, gaps, conflicts, buildOn};
+  });
+  return per;
+}
+// an existing, kept orchestrator makes the engine/compute build-choices moot
+function orchEngineCovered(){ return toolsForSlot("orchestration").some(t=>{const d=S.infra.disp[t]||"adopt"; return d!=="replace"&&d!=="defer";}); }
+function decVisible(dec){ if(!inScope(dec.module)) return false; if((dec.id==="engine"||dec.id==="compute") && orchEngineCovered()) return false; return true; }
+function decChosen(id){ const v=S.decisions[id]; if(v==null||v==="") return null; const d=BOOK.decisions.find(x=>x.id===id); if(d&&d.kind==="choice"){ const o=d.options.find(o=>o.id===v); return o?o.label:v; } return v; }
+function afterInfra(){
+  const first = BOOK.decisions.find(d=>decVisible(d));
+  go(first ? "decide_"+first.id : (defaultsApply()?"decide_defaults":"contract"));
+}
+function mcpRelevant(){ return scopeSlotSet().size>0; }
+function prevBeforeDecisions(){ return mcpRelevant() ? "mcp_access" : "agent_hosts"; }
+
+/* ---- agent-host inventory + read-only MCP access gate ---- */
+function viewAgentHosts(){
+  const rows = AGENT_HOSTS.map(h=>{ const on=S.hosts.includes(h.id);
+    return `<div class="mod" role="button" tabindex="0" aria-pressed="${on}" data-host="${h.id}">
+      <span class="box">${on?"&#10003;":""}</span>
+      <span><span class="mname">${esc(h.label)}</span><span class="msum" style="display:block">Family: ${esc(h.family)} &middot; MCP: ${esc(h.mcp)}</span></span></div>`; }).join("");
+  const fams=new Set(S.hosts.map(h=>(AGENT_HOSTS.find(a=>a.id===h)||{}).family));
+  const flag = (inScope("evalx")||inScope("llm")) && S.hosts.length && fams.size<2
+    ? `<div class="note warn">One model family in scope. The default &ldquo;run the judge on a different family from the agent&rdquo; cannot be met &mdash; add a second family, or the brief records the accepted risk.</div>` : "";
+  return pageHdr("Page — agent host","Which agent host(s) will run the build?") +
+    `<p class="sub">The runner hosts MCP, so any of these can execute the brief &mdash; the native-SDK ones and the bridged ones alike. The choice sets the execution mode and whether an independent, different-family judge is available.</p>
+     <div class="mods">${rows}</div>${flag}
+     <div class="nav"><button class="btn" id="back" data-to="${S.infra.tools.length?'disposition':'inventory'}">&larr; Back</button><span class="spacer"></span>
+     <button class="btn p" id="next">Continue &rarr;</button></div>`;
+}
+function viewMcpAccess(){
+  const cur=S.mcpAccess;
+  const opts=MCP_ACCESS.map(o=>`<button class="opt" type="button" aria-pressed="${cur===o.id}" data-acc="${o.id}"><span class="pick"></span><span><span class="lbl">${esc(o.label)}</span><span class="eff">${esc(o.eff)}</span></span></button>`).join("");
+  return pageHdr("Page — MCP access","What may the build agent read over MCP?") +
+    `<p class="sub">Verification can query the client's live systems through MCP servers (AWS, Azure, GCP, and tool servers) to confirm each conformance claim. All of this is read-only.</p>
+     <div class="opts">${opts}</div>
+     <div class="note">Read-only, and per environment. Applying the fixes (writing) is a separate, signed step, gated like model promotion: the agent may <i>propose</i> a change; a signed-in operator <i>applies</i> it.</div>
+     <div class="nav"><button class="btn" id="back" data-to="agent_hosts">&larr; Back</button><span class="spacer"></span>
+     <button class="btn p" id="next" ${cur?"":"disabled"}>Continue &rarr;</button></div>`;
+}
+function executionSection(){
+  const out=["## Execution and trust",""];
+  const hosts = S.hosts.length ? S.hosts.map(h=>{const x=AGENT_HOSTS.find(a=>a.id===h)||{}; return `${x.label} (${x.mcp})`;}).join(", ") : "not specified";
+  const acc = MCP_ACCESS.find(a=>a.id===S.mcpAccess);
+  out.push(`Agent host(s): ${hosts}.`);
+  out.push(`MCP verification access: ${acc?acc.label:"not set"} — read-only.`,"");
+  out.push("The plumbing (tool calls, MCP probes, deterministic checks) is portable across these hosts; the behavioural guarantees (boundary adherence, negator skepticism, judge calibration) are not, and need per-model evaluation.","");
+  const fams=new Set(S.hosts.map(h=>(AGENT_HOSTS.find(a=>a.id===h)||{}).family));
+  if((inScope("evalx")||inScope("llm")) && fams.size<2){
+    out.push("> **Flag.** Only one model family is in scope, so the default “run the judge on a different family from the agent” cannot be met. Add a second family for judging, or record the accepted risk.","");
+  }
+  out.push("_Verification is read-only. Applying the fixes (writing through MCP) is a separate, signed step, gated like model promotion — the agent proposes, a signed-in operator applies._","");
+  return out;
+}
+function wireAgentHosts(){
+  const toggle=el=>{const h=el.dataset.host,i=S.hosts.indexOf(h); if(i>=0)S.hosts.splice(i,1); else S.hosts.push(h); log("choice_made","host "+h); render();};
+  document.querySelectorAll(".mod[data-host]").forEach(el=>{ el.addEventListener("click",()=>toggle(el));
+    el.addEventListener("keydown",e=>{if(e.key===" "||e.key==="Enter"){e.preventDefault();toggle(el);}}); });
+  $("#next").addEventListener("click",()=>{ log("scope_set","hosts: "+(S.hosts.join(",")||"unset")); if(mcpRelevant()) go("mcp_access"); else afterInfra(); });
+}
+function wireMcpAccess(){
+  document.querySelectorAll(".opt[data-acc]").forEach(b=>b.addEventListener("click",()=>{ S.mcpAccess=b.dataset.acc; log("choice_made","mcp_access="+b.dataset.acc); render(); }));
+  $("#next").addEventListener("click",()=>afterInfra());
+}
+
+/* ---- inventory / disposition / review views ---- */
+function scopeSlotSet(){ const s=new Set(); S.scope.forEach(m=>(MODULE_SLOTS[m]||[]).forEach(x=>s.add(x))); return s; }
+function viewInventory(){
+  const scopeSlots = scopeSlotSet();
+  const rows = TOOL_ORDER.map(t=>{
+    const tool=TOOLS[t], on=S.infra.tools.includes(t), prov=(tool.provides||[]);
+    const rel = prov.filter(s=>scopeSlots.has(s));
+    const cov = rel.length ? `Fills for your scope: ${rel.map(s=>SLOTS[s]).join(", ")}`
+              : (prov.length ? `Covers: ${prov.map(s=>SLOTS[s]).join(", ")}` : "Describe it on the next step.");
+    return `<div class="mod" role="button" tabindex="0" aria-pressed="${on}" data-tool="${t}">
+      <span class="box">${on?"&#10003;":""}</span>
+      <span><span class="mname">${esc(tool.label)}</span>${tool.note?`<span class="msum" style="display:block">${esc(tool.note)}</span>`:""}
+      <span class="why ${rel.length?'sg':''}" style="display:block">${esc(cov)}</span></span></div>`;
+  }).join("");
+  return pageHdr("Page — inventory","What does the client already run?") +
+    `<p class="sub">Select the MLOps tools the org already uses. Leave all unchecked for a greenfield build. Each tool fills some of the capability slots your chosen modules need; the next step asks how to treat each one.</p>
+     <div class="mods">${rows}</div>
+     <div class="nav"><button class="btn" id="back" data-to="pick_modules">&larr; Back</button><span class="spacer"></span>
+     <button class="btn p" id="next">${S.infra.tools.length?"Set how to treat each &rarr;":"No existing tools &rarr;"}</button></div>`;
+}
+function viewDisposition(){
+  const scopeSlots = scopeSlotSet();
+  const rows = S.infra.tools.map(t=>{
+    const tool=TOOLS[t], cur=S.infra.disp[t]||"adopt";
+    const rel=(tool.provides||[]).filter(s=>scopeSlots.has(s));
+    const seg=DISPOSITIONS.map(d=>`<button type="button" data-tool="${t}" data-disp="${d.id}" aria-pressed="${cur===d.id}">${esc(d.label)}</button>`).join("");
+    const eff=DISPOSITIONS.find(d=>d.id===cur);
+    return `<div class="defitem"><div class="dhdr"><span class="dname">${esc(tool.label)}</span><span class="dmod">${rel.length?esc(rel.map(s=>SLOTS[s]).join(", ")):"no scope slot"}</span></div>
+      <div class="seg" style="margin-top:8px">${seg}</div><div class="dtext">${esc(eff.eff)}</div></div>`;
+  }).join("");
+  return pageHdr("Page — disposition","How should each existing tool be treated?") +
+    `<p class="sub">For each tool choose adopt, wrap, extend, replace or defer. Replace and defer drop it from the gap plan; the others keep it and compute what, if anything, must be added so each invariant still holds.</p>
+     ${rows}
+     <div class="nav"><button class="btn" id="back" data-to="inventory">&larr; Back</button><span class="spacer"></span>
+     <button class="btn p" id="next">Continue &rarr;</button></div>`;
+}
+function viewReview(){
+  const gap=computeGap(); let tN=0,tG=0,tC=0;
+  const blocks=S.scope.map(m=>{
+    const g=gap[m]; if(!g||(MODULE_SLOTS[m]||[]).length===0||!g.tools.length) return "";
+    tN+=g.native.length; tG+=g.gaps.length; tC+=g.conflicts.length;
+    const gl=g.gaps.map(x=>`<li>${x.rule.id} <span style="color:var(--faint)">(${esc(TOOLS[x.tool].label)}, ${x.status})</span>: ${esc(x.note)}</li>`).join("");
+    const cl=g.conflicts.map(x=>{ const k=m+"."+x.rule.id;
+      return `<li style="color:var(--coral)">${x.rule.id} (${esc(TOOLS[x.tool].label)}): ${esc(x.note)} <label style="display:inline-flex;gap:4px;align-items:center;margin-left:6px"><input type="checkbox" data-waive="${k}" ${S.infra.waivers[k]?"checked":""}> waive</label></li>`;}).join("");
+    return `<li><div class="qn">${esc(BOOK.modules[m].label)} <span style="color:var(--faint);font-weight:400">&middot; ${g.tools.map(t=>esc(TOOLS[t].label)).join(", ")}</span></div>
+      <div class="qg">${g.native.length} satisfied today${g.gaps.length?`, ${g.gaps.length} gap${g.gaps.length>1?"s":""} to close`:""}${g.buildOn.length?`, ${g.buildOn.length} built on top`:""}.</div>
+      ${gl?`<ul style="margin:8px 0 0;padding-left:18px;font:13px/1.5 var(--sans);color:var(--muted)">${gl}</ul>`:""}
+      ${cl?`<ul style="margin:8px 0 0;padding-left:18px;font:13px/1.5 var(--sans)">${cl}</ul>`:""}</li>`;
+  }).filter(Boolean).join("");
+  const green=S.scope.filter(m=>(MODULE_SLOTS[m]||[]).length && (!gap[m]||!gap[m].tools.length)).map(m=>BOOK.modules[m].label);
+  return pageHdr("Page — review &middot; gap plan","Review the gap plan before composing") +
+    `<p class="sub">Your stack covers part of the architecture. Here is what holds today, and what must be added so every invariant holds whatever the tool.</p>
+     <div class="summary"><dl><dt>Satisfied</dt><dd>${tN} invariant${tN===1?"":"s"} met by existing tools</dd>
+       <dt>Gaps</dt><dd>${tG} to close</dd>${tC?`<dt>Conflicts</dt><dd>${tC} need a control or a waiver</dd>`:""}</dl></div>
+     <ol class="queue">${blocks||'<li class="qg">No tool-backed modules in scope.</li>'}</ol>
+     ${green.length?`<div class="note">Built fresh (no current tool fills the slot): ${esc(green.join(", "))}.</div>`:""}
+     <div class="nav"><button class="btn" id="back" data-to="inventory">&larr; Change infra</button><span class="spacer"></span>
+     <button class="btn p" id="approveGaps">Approve gap plan &rarr;</button></div>`;
+}
+
+/* ---- wire helpers for the three new pages ---- */
+function wireInventory(){
+  const toggle=el=>{const t=el.dataset.tool,i=S.infra.tools.indexOf(t);
+    if(i>=0){S.infra.tools.splice(i,1); delete S.infra.disp[t];} else {S.infra.tools.push(t); S.infra.disp[t]="adopt";}
+    log("choice_made","infra "+t); render();};
+  document.querySelectorAll(".mod[data-tool]").forEach(el=>{ el.addEventListener("click",()=>toggle(el));
+    el.addEventListener("keydown",e=>{if(e.key===" "||e.key==="Enter"){e.preventDefault();toggle(el);}}); });
+  $("#next").addEventListener("click",()=>{ log("scope_set","infra: "+(S.infra.tools.join(",")||"greenfield"));
+    if(S.infra.tools.length) go("disposition"); else go("agent_hosts"); });
+}
+function wireDisposition(){
+  document.querySelectorAll(".seg button[data-disp]").forEach(b=>b.addEventListener("click",()=>{
+    S.infra.disp[b.dataset.tool]=b.dataset.disp; log("choice_made","disp "+b.dataset.tool+"="+b.dataset.disp); render(); }));
+  $("#next").addEventListener("click",()=>go("agent_hosts"));
+}
+function wireReview(){
+  document.querySelectorAll("input[data-waive]").forEach(c=>c.addEventListener("change",()=>{
+    const k=c.dataset.waive; if(c.checked){S.infra.waivers[k]=true; log("waiver",k);} else delete S.infra.waivers[k]; }));
+  $("#approveGaps").addEventListener("click",()=>{ log("gap_plan_reviewed", Object.keys(S.infra.waivers).length+" waivers"); go("compose"); });
+}
+
+/* ---- brief: infra + gap-plan sections ---- */
+function gapBriefSections(gap){
+  if(!S.infra.tools.length) return [];
+  const out=["## Existing infrastructure",""];
+  S.infra.tools.forEach(t=>{ const d=S.infra.disp[t]||"adopt", dl=DISPOSITIONS.find(x=>x.id===d);
+    const cov=(TOOLS[t].provides||[]).map(s=>SLOTS[s]).join(", ")||"described in-house";
+    out.push(`- **${TOOLS[t].label}** — ${dl.label.toLowerCase()} (${dl.eff}) · covers: ${cov}${TOOLS[t].source?` · basis: ${TOOLS[t].source} (${TOOLS[t].version})`:""}`);
+  });
+  out.push("");
+  const rows=[];
+  S.scope.forEach(m=>{ const g=gap[m]; if(g && !g.greenfield){
+    g.gaps.forEach(x=>rows.push(`- **${BOOK.modules[m].label}** ${x.rule.id}: ${x.note}`));
+    g.conflicts.forEach(x=>{ const k=m+"."+x.rule.id; rows.push(`- **${BOOK.modules[m].label}** ${x.rule.id}${S.infra.waivers[k]?" _(waived)_":""}: ${x.note}`); });
+  }});
+  out.push("## Gap plan","");
+  out.push(rows.length ? "The client's tools cover part of the architecture. Close these gaps so each invariant holds whatever the tool:"
+                       : "The client's tools satisfy the in-scope invariants, or the remaining invariants are built fresh. No tool-specific deltas required.");
+  out.push("");
+  rows.forEach(r=>out.push(r));
+  out.push("");
+  out.push('_Tool conformance is pinned to the versions noted above; re-check on upgrade. "Covers" is a capability claim, not a certification._',"");
+  return out;
+}
+function openItemsSections(gap){
+  const liveOK = S.mcpAccess && S.mcpAccess!=="none";
+  const out=["## Open items for the build agent",""];
+  out.push("Resolve these before or during the build. Each names what to do and how it is checked, in the same spirit as the module rules — a claim without a check is a wish.","");
+  let n=0;
+  const used=new Set();
+  S.scope.forEach(m=>{ const g=gap[m]; if(g&&g.tools) g.tools.forEach(t=>used.add(t)); });
+  used.forEach(t=>{
+    const tool=TOOLS[t];
+    const claims=Object.entries(tool.conformance||{}).filter(([k])=>S.scope.includes(k.split(".")[0]));
+    if(!claims.length) return;
+    n++;
+    out.push(`### OI-${n}. Verify ${tool.label} conformance · agent`,"");
+    if(tool.mcp){
+      const srv=MCP_SERVERS[tool.mcp]?MCP_SERVERS[tool.mcp].label:tool.mcp;
+      out.push(`Run the probes below via the ${srv} (pinned: ${tool.version}). Capability probes run anywhere; live probes run only where MCP access allows (current: ${S.mcpAccess||"none"}, read-only). Record each result and its evidence ref in the ledger.`,"");
+    } else {
+      out.push(`Confirm each claim against current ${tool.label} documentation (pinned: ${tool.version}${tool.source?`; basis: ${tool.source}`:""}); record a source for each.`,"");
+    }
+    claims.forEach(([k,c])=>{
+      const p=c.probe;
+      if(p){
+        const mode=(p.mode==="live" && !liveOK)?"capability (live blocked by access)":p.mode;
+        const srv=MCP_SERVERS[p.via]?MCP_SERVERS[p.via].label:p.via;
+        out.push(`- \`${k}\` (${c.status}) — ${mode} probe via ${srv}: ${p.ask}. Confirms ${c.status} if: ${p.confirms}.`);
+      } else {
+        out.push(`- \`${k}\` (${c.status}): ${c.note}`);
+      }
+    });
+    out.push("");
+    out.push("_Checked when:_ every claim has a probe result or a current citation in the ledger. _Fails if:_ a live-eligible claim stayed unverified with no waiver.","");
+  });
+  if(S.hosts.length){
+    n++;
+    const hs=S.hosts.map(h=>(AGENT_HOSTS.find(a=>a.id===h)||{}).label||h).join(", ");
+    out.push(`### OI-${n}. Calibrate the review agents for the chosen host(s) · firm`,"");
+    out.push(`Confirm the negator and judge are calibrated for ${hs}. An uncalibrated host's pass is a claim, not evidence.`,"");
+    out.push("_Checked when:_ calibration evidence exists for each host. _Fails if:_ a brief reports a verified pass from an uncalibrated host with no flag.","");
+  }
+  n++;
+  out.push(`### OI-${n}. Approve the needs questions · consultant`,"");
+  out.push("The needs questions are a hand-drafted stand-in for the generation step. Have the consultant approve them, tied to the source page version.","");
+  out.push("_Checked when:_ the book's `needs.approved` records who approved and when. _Fails if:_ a client sees unapproved questions.","");
+  n++;
+  out.push(`### OI-${n}. Confirm the draft failure cases · agent + consultant`,"");
+  out.push("Each rule's `breaks_if` is a draft. Confirm every one names something a test can observe, and tighten any that merely restate the rule.","");
+  out.push("_Checked when:_ each `breaks_if` is observable by a check. _Fails if:_ a rule has no failure case, or its failure case restates the rule.","");
+  return out;
+}
+function modConfLines(m, gap){
+  if(!S.infra.tools.length) return [];
+  const slots=MODULE_SLOTS[m]||[]; if(!slots.length) return [];
+  const g=gap[m], out=[];
+  if(!g || !g.tools.length){
+    if(m==="orch"){ const e=decChosen("engine"), c=decChosen("compute");
+      out.push(`**Build target.** No existing orchestrator in inventory; build fresh${e?` on ${e}`:""}${c?` (${c})`:""}.`,""); return out; }
+    out.push("**Conformance.** No current tool fills this slot; build it per the boundary above.",""); return out; }
+  out.push(`**Conformance against your stack (${g.tools.map(t=>TOOLS[t].label).join(", ")}).**`,"");
+  if(g.native.length){ out.push("Satisfied today:"); g.native.forEach(x=>out.push(`- ${x.rule.id} (${TOOLS[x.tool].label}): ${x.note}`)); out.push(""); }
+  if(g.gaps.length){ out.push("Gaps to close:"); g.gaps.forEach(x=>out.push(`- ${x.rule.id} (${TOOLS[x.tool].label}, ${x.status}): ${x.note}`)); out.push(""); }
+  if(g.conflicts.length){ out.push("Conflicts (waive or add a control):"); g.conflicts.forEach(x=>out.push(`- ${x.rule.id} (${TOOLS[x.tool].label}): ${x.note}`)); out.push(""); }
+  if(g.buildOn.length){ out.push(`Built on top of ${g.tools.map(t=>TOOLS[t].label).join(", ")}: rules ${g.buildOn.map(x=>x.rule.id).join(", ")} are not provided by the tool and are built per the boundary.`,""); }
+  return out;
+}
+
 /* ============================================================ state ======= */
 const S = {
   node: "intake",
@@ -415,6 +799,9 @@ const S = {
   addedByReq: {},       // module id -> reason string (auto-added)
   decisions: {},        // id -> value
   defaults: {},         // id -> {changed:bool, text:string}
+  infra: { tools: [], disp: {}, waivers: {} }, // existing tools, per-tool disposition, conflict waivers
+  hosts: [],            // agent host ids (who executes the brief)
+  mcpAccess: null,      // 'none' | 'nonprod' | 'prod_confirm' — read-only verification access
   ledger: [],
   visited: [],
   hash: ""
@@ -428,6 +815,7 @@ const STEPS = [
   {k:"intake", label:"Intake"},
   {k:"needs_page", label:"Needs"},
   {k:"pick_modules", label:"Modules"},
+  {k:"inventory", label:"Infra"},
   {k:"decisions", label:"Decisions"},
   {k:"decide_defaults", label:"Defaults"},
   {k:"contract", label:"Contract"},
@@ -435,9 +823,11 @@ const STEPS = [
   {k:"compose", label:"Brief"}
 ];
 function stepIndexFor(node){
-  if(node.startsWith("decide_") && node!=="decide_defaults") return 3;
-  const direct = {intake:0,needs_page:1,pick_modules:2,decide_defaults:4,contract:5,build:6,compose:7,done:7};
-  return (node in direct) ? direct[node] : 3;
+  if(node==="inventory"||node==="disposition") return 3;
+  if(node.startsWith("decide_") && node!=="decide_defaults") return 4;
+  if(node==="review_gaps") return 7;
+  const direct = {intake:0,needs_page:1,pick_modules:2,decide_defaults:5,contract:6,build:7,compose:8,done:8};
+  return (node in direct) ? direct[node] : 4;
 }
 
 /* ============================================================ scope logic == */
@@ -512,7 +902,7 @@ function go(node){
 // compute the next node from a decision/flow position
 function nextDecisionFrom(idx){ // idx into DECISION_NODES, -1 = start
   for(let i=idx+1;i<BOOK.decisions.length;i++){
-    if(inScope(BOOK.decisions[i].module)) return "decide_"+BOOK.decisions[i].id;
+    if(decVisible(BOOK.decisions[i])) return "decide_"+BOOK.decisions[i].id;
   }
   return defaultsApply() ? "decide_defaults" : "contract";
 }
@@ -535,10 +925,15 @@ function render(){
   if(n==="intake") body += viewIntake();
   else if(n==="needs_page") body += viewNeeds();
   else if(n==="pick_modules") body += viewPick();
+  else if(n==="inventory") body += viewInventory();
+  else if(n==="disposition") body += viewDisposition();
+  else if(n==="agent_hosts") body += viewAgentHosts();
+  else if(n==="mcp_access") body += viewMcpAccess();
   else if(n.startsWith("decide_") && n!=="decide_defaults") body += viewDecision(n.slice(7));
   else if(n==="decide_defaults") body += viewDefaults();
   else if(n==="contract") body += viewContract();
   else if(n==="build") body += viewBuild();
+  else if(n==="review_gaps") body += viewReview();
   else if(n==="compose") body += viewBrief();
   else if(n==="done") body += viewDone();
 
@@ -614,8 +1009,8 @@ function viewDecision(decId){
   const d = BOOK.decisions.find(x=>x.id===decId);
   const idx = BOOK.decisions.findIndex(x=>x.id===decId);
   // previous visible decision for the back button
-  let backTo = "pick_modules";
-  for(let i=idx-1;i>=0;i--){ if(inScope(BOOK.decisions[i].module)){ backTo="decide_"+BOOK.decisions[i].id; break; } }
+  let backTo = prevBeforeDecisions();
+  for(let i=idx-1;i>=0;i--){ if(decVisible(BOOK.decisions[i])){ backTo="decide_"+BOOK.decisions[i].id; break; } }
   const cur = S.decisions[decId];
   let ctrl = "";
   if(d.kind==="text"){
@@ -655,8 +1050,8 @@ function viewDefaults(){
     });
   });
   // find back target = last applicable decision
-  let backTo = "pick_modules";
-  for(let i=BOOK.decisions.length-1;i>=0;i--){ if(inScope(BOOK.decisions[i].module)){ backTo="decide_"+BOOK.decisions[i].id; break; } }
+  let backTo = prevBeforeDecisions();
+  for(let i=BOOK.decisions.length-1;i>=0;i--){ if(decVisible(BOOK.decisions[i])){ backTo="decide_"+BOOK.decisions[i].id; break; } }
   return pageHdr("Page — defaults", "These decisions have a default. Accept all, or change some.",
       `From the Decisions tab of the source page. Showing only items for modules in scope.`) +
     html +
@@ -759,6 +1154,8 @@ function composeBrief(){
     L.push(`- **${BOOK.modules[m].label}**${tag} — ${BOOK.modules[m].summary}`);
   });
   L.push(``);
+  const gap = computeGap();
+  gapBriefSections(gap).forEach(x=>L.push(x));
   // decisions
   const decEntries = Object.entries(S.decisions).filter(([k])=>DEC_LABELS[k]);
   if(decEntries.length){
@@ -803,6 +1200,7 @@ function composeBrief(){
     // inputs resolved
     const ins = resolveInputs(mod);
     if(ins.length){ L.push(`**Shaped by your choices.**`); ins.forEach(x=>L.push(`- ${x}`)); L.push(``); }
+    modConfLines(m, gap).forEach(x=>L.push(x));
     L.push(`**Rules (each with its failure case).**`);
     L.push(``);
     L.push(`| # | Rule | Fails if |`);
@@ -816,6 +1214,8 @@ function composeBrief(){
     L.push(`**Open for variation.** ${mod.open_for.join(", ")}.`);
     L.push(``);
   });
+  executionSection().forEach(x=>L.push(x));
+  openItemsSections(gap).forEach(x=>L.push(x));
   L.push(`---`);
   L.push(``);
   L.push(`### Not produced here`);
@@ -859,12 +1259,16 @@ function renderSide(){
   // decisions
   const dl = $("#decsList");
   if(dl){
-    const ds = Object.entries(S.decisions).filter(([k])=>DEC_LABELS[k]);
-    dl.innerHTML = ds.length ? ds.map(([k,v])=>{
+    const parts = [];
+    if(S.infra.tools.length) parts.push(`<b>Infra:</b> ${S.infra.tools.map(t=>esc(TOOLS[t].label)).join(", ")}`);
+    if(S.hosts.length) parts.push(`<b>Hosts:</b> ${S.hosts.map(h=>esc((AGENT_HOSTS.find(a=>a.id===h)||{}).label||h)).join(", ")}`);
+    if(S.mcpAccess) parts.push(`<b>MCP access:</b> ${esc((MCP_ACCESS.find(a=>a.id===S.mcpAccess)||{}).label||S.mcpAccess)} (read-only)`);
+    Object.entries(S.decisions).filter(([k])=>DEC_LABELS[k]).forEach(([k,v])=>{
       const d = BOOK.decisions.find(x=>x.id===k); let txt=v;
       if(d&&d.kind==="choice"){ const o=d.options.find(o=>o.id===v); if(o) txt=o.label; }
-      return `<b>${esc(DEC_LABELS[k])}:</b> ${esc(txt)}`;
-    }).join("<br>") : `<span style="color:var(--faint);font-style:italic">None recorded yet.</span>`;
+      parts.push(`<b>${esc(DEC_LABELS[k])}:</b> ${esc(txt)}`);
+    });
+    dl.innerHTML = parts.length ? parts.join("<br>") : `<span style="color:var(--faint);font-style:italic">None recorded yet.</span>`;
   }
   const led = $("#led");
   if(led){ led.innerHTML = S.ledger.slice(-40).map(e=>`<div><b>${esc(e.ev)}</b> ${esc(typeof e.data==="string"?e.data:JSON.stringify(e.data))} <span style="color:var(--faint)">${e.t}</span></div>`).join(""); led.scrollTop = led.scrollHeight; }
@@ -875,7 +1279,7 @@ function wire(){
   // rail
   document.querySelectorAll(".rail button[data-step]").forEach(b=>{
     if(b.disabled) return;
-    b.addEventListener("click",()=>{ const k=b.dataset.step; if(k==="decisions"){ const first = BOOK.decisions.find(d=>inScope(d.module)); go(first?"decide_"+first.id:"pick_modules"); } else go(k); });
+    b.addEventListener("click",()=>{ const k=b.dataset.step; if(k==="decisions"){ const first = BOOK.decisions.find(d=>decVisible(d)); go(first?"decide_"+first.id:"pick_modules"); } else go(k); });
   });
   const back = $("#back"); if(back) back.addEventListener("click",()=>go(back.dataset.to));
   const restart = $("#restart"); if(restart) restart.addEventListener("click",()=>{ if(confirm("Start a new book? This clears every choice.")) location.reload(); });
@@ -900,6 +1304,11 @@ function wire(){
     });
     const next = $("#next"); if(next) next.addEventListener("click",()=>confirmRequires());
   }
+  else if(n==="inventory"){ wireInventory(); }
+  else if(n==="disposition"){ wireDisposition(); }
+  else if(n==="agent_hosts"){ wireAgentHosts(); }
+  else if(n==="mcp_access"){ wireMcpAccess(); }
+  else if(n==="review_gaps"){ wireReview(); }
   else if(n.startsWith("decide_") && n!=="decide_defaults"){
     const decId = n.slice(7); const d=BOOK.decisions.find(x=>x.id===decId);
     if(d.kind==="choice"){
@@ -931,7 +1340,10 @@ function wire(){
     $("#stop").addEventListener("click",()=>go("done"));
   }
   else if(n==="build"){
-    $("#compose").addEventListener("click",()=>{ log("composed", S.scope.length+" modules"); go("compose"); });
+    $("#compose").addEventListener("click",()=>{
+      if(S.infra.tools.length){ go("review_gaps"); }
+      else { log("composed", S.scope.length+" modules"); go("compose"); }
+    });
   }
   else if(n==="compose"){
     $("#copy").addEventListener("click",async()=>{ try{ await navigator.clipboard.writeText(S._briefMd); toast("Copied."); }catch(e){ toast("Copy failed — select and copy manually."); } });
@@ -966,8 +1378,7 @@ function confirmRequires(){
 }
 function advanceFromPick(){
   log("scope_set", S.scope.join(","));
-  const first = BOOK.decisions.find(d=>inScope(d.module));
-  go(first ? "decide_"+first.id : (defaultsApply()?"decide_defaults":"contract"));
+  go("inventory");
 }
 
 /* SHA-256 of scope + decisions (approval hash) */
